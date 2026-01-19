@@ -4,6 +4,7 @@ from bot.texts import T
 from bot.config import SUPPORT_LINK, CHANNEL_LINK, GENRES_LIST
 from bot.utils import format_title, split_playlist_name
 from bot.database import Database
+from aiogram.types import WebAppInfo
 
 # --- ВЫБОР ЯЗЫКА (6 ЯЗЫКОВ) ---
 def kb_lang():
@@ -301,4 +302,10 @@ def kb_select_from_fav(uid, target_pl, page=0):
     if page < total - 1: row.append(InlineKeyboardButton(text="➡️", callback_data=f"addtr:fav:{target_pl}:{page+1}"))
     kb.row(*row)
     kb.row(InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data=f"addtr:menu:{target_pl}"))
+    return kb.as_markup()
+
+def app_kb(url: str):
+    kb = InlineKeyboardBuilder()
+    # WebAppInfo говорит телеграму: "Открой это не в браузере, а шторкой внутри приложения"
+    kb.button(text="📱 Запустить Music Genie", web_app=WebAppInfo(url=url))
     return kb.as_markup()

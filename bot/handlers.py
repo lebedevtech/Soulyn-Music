@@ -3,11 +3,13 @@ import html
 import re
 import asyncio 
 from aiogram import types, F
-from aiogram.types import FSInputFile, CallbackQuery, InputMediaPhoto
+from aiogram.types import FSInputFile, CallbackQuery, InputMediaPhoto, WebAppInfo, Message
 from aiogram.filters import Command, CommandStart, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.exceptions import TelegramBadRequest
 
+# Импорт из твоих модулей
+from bot.keyboards import app_kb
 from bot.loader import dp, bot, logger, user_settings, search_cache, error_cache
 from bot.config import ADMIN_ID, LANG_IMG_PATH, SUPPORT_GROUP_ID, GENRES_LIST
 from bot.database import Database
@@ -19,14 +21,34 @@ from bot.utils import delete_later, format_title, split_playlist_name
 
 BOT_NAME_TEXT = "Soulyn Music"
 
-# Путь к баннеру (предполагаем, что assets лежит в bot/assets или в корне assets)
-# Лучше создать папку bot/assets/ и положить туда banner.jpg
+# Путь к баннеру
 BANNER_PATH = os.path.join("bot", "assets", "banner.jpg")
 if not os.path.exists(BANNER_PATH):
-    # Если не нашли в bot/assets, попробуем просто assets
     BANNER_PATH = os.path.join("assets", "banner.jpg")
 
-# --- УМНЫЙ ХАБ (С ПОДДЕРЖКОЙ БАННЕРА) ---
+# -------------------------------------------------------------------------
+# 🔥 НОВЫЙ ХЕНДЛЕР: MINI APP
+# Мы ставим его В НАЧАЛО, чтобы поиск музыки не перехватывал команду /app
+# -------------------------------------------------------------------------
+
+# Ссылка на твое приложение
+WEB_APP_URL = "https://soulyn-music-tma.vercel.app" 
+
+@dp.message(Command("app"))
+async def open_app(message: Message):
+    await message.answer(
+        text=(
+            "🚀 <b>Music Genie App</b>\n\n"
+            "Нажми кнопку ниже, чтобы открыть плеер будущего! 👇"
+        ),
+        reply_markup=app_kb(WEB_APP_URL),
+        parse_mode="HTML"
+    )
+
+# -------------------------------------------------------------------------
+# ОСНОВНЫЕ ФУНКЦИИ
+# -------------------------------------------------------------------------
+
 async def open_main_menu(uid, chat_id, clb=None, text_key='menu'):
     markup = kb.kb_menu(uid)
     text = T(uid, text_key)
@@ -39,16 +61,12 @@ async def open_main_menu(uid, chat_id, clb=None, text_key='menu'):
         except: pass
 
         try:
-            # Сценарий 1: Было фото -> Стало фото (Edit Media)
             if clb.message.photo and has_banner:
                 media = InputMediaPhoto(media=photo, caption=text, parse_mode="HTML")
                 await clb.message.edit_media(media, reply_markup=markup)
                 Database.set_menu_id(uid, clb.message.message_id)
                 return
             
-            # Сценарий 2: Переход между типами (Текст <-> Фото)
-            # Телеграм не дает редактировать Текст в Фото и наоборот.
-            # Поэтому удаляем старое и шлем новое.
             need_recreate = (has_banner and not clb.message.photo) or (not has_banner and clb.message.photo)
             
             if need_recreate:
@@ -60,7 +78,6 @@ async def open_main_menu(uid, chat_id, clb=None, text_key='menu'):
                 Database.set_menu_id(uid, msg.message_id)
                 return
 
-            # Сценарий 3: Текст -> Текст (просто Edit)
             if not has_banner:
                 await clb.message.edit_text(text, reply_markup=markup, parse_mode="HTML")
                 Database.set_menu_id(uid, clb.message.message_id)
@@ -70,7 +87,6 @@ async def open_main_menu(uid, chat_id, clb=None, text_key='menu'):
             if "message is not modified" in str(e): return 
         except Exception: pass 
 
-    # Если clb не передан (команда /start) или произошла ошибка редактирования -> шлем новое
     old_menu_id = Database.get_menu_id(uid)
     if old_menu_id:
         try: await bot.delete_message(chat_id, old_menu_id)
@@ -97,10 +113,8 @@ async def start(msg: types.Message, state: FSMContext):
     Database.register_user(uid, msg.from_user.username, msg.from_user.first_name)
     user = Database.get_user(uid)
     
-    # Если язык не выбран, показываем выбор языка (баннер тут не нужен, или можно другую картинку)
     if not user.get("lang"):
         welcome_text = T(uid, 'welcome').format(msg.from_user.first_name)
-        # Если есть отдельная картинка для языков, используем её, иначе просто текст
         if os.path.exists(LANG_IMG_PATH):
             await msg.answer_photo(FSInputFile(LANG_IMG_PATH), caption=welcome_text, reply_markup=kb.kb_lang(), parse_mode="HTML")
         else:
@@ -117,11 +131,9 @@ async def back_to_main(clb: CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data == "nav:search")
 async def nav_search_handler(clb: CallbackQuery):
     await clb.answer()
-    # При переходе в режим поиска удаляем баннер (чтобы не мешал), оставляем текст
     try:
         await clb.message.delete()
         msg = await clb.message.answer(T(clb.from_user.id, 'search_mode_text'), reply_markup=kb.kb_cancel_search(clb.from_user.id), parse_mode="HTML")
-        # Не сохраняем это как menu_id, так как это временное сообщение
     except: pass
 
 @dp.callback_query(F.data.startswith("set:lang:"))
@@ -134,55 +146,10 @@ async def set_lang(clb: CallbackQuery):
     except: pass
     await open_main_menu(uid, clb.message.chat.id)
 
-# --- ПОИСК ---
-@dp.message(F.text, StateFilter(None), F.chat.type == "private")
-async def text_search(msg: types.Message):
-    uid = msg.from_user.id
-    Database.register_user(uid, msg.from_user.username, msg.from_user.first_name)
-    
-    old_id = Database.get_menu_id(uid)
-    if old_id:
-        try: await bot.delete_message(msg.chat.id, old_id)
-        except: pass
-
-    status_msg = await msg.answer(T(uid, 'search').format(msg.text), parse_mode="HTML")
-    res = await search_yt(msg.text)
-    
-    if res:
-        search_cache[uid] = res
-        await status_msg.edit_text(T(uid, 'select'), reply_markup=kb.kb_search(uid, res, 0), parse_mode="HTML")
-    else:
-        await status_msg.edit_text(T(uid, '404'), parse_mode="HTML")
-        await asyncio.sleep(5)
-        try: await status_msg.delete()
-        except: pass
-        await open_main_menu(uid, msg.chat.id)
-
-@dp.callback_query(F.data == "delete:search")
-async def delete_search_btn(clb: CallbackQuery):
-    await clb.answer()
-    try: await clb.message.delete()
-    except: pass
-    await open_main_menu(clb.from_user.id, clb.message.chat.id)
-
-@dp.callback_query(F.data.startswith("page:"))
-async def search_pagination(clb: CallbackQuery):
-    await clb.answer()
-    try:
-        page = int(clb.data.split(":")[1])
-        uid = clb.from_user.id
-        if uid in search_cache:
-            res = search_cache[uid]
-            await clb.message.edit_text(T(uid, 'select'), reply_markup=kb.kb_search(uid, res, page), parse_mode="HTML")
-        else:
-            await clb.answer("⚠️ Результаты устарели.", show_alert=True)
-    except: pass
-
-# --- ПЛЕЙЛИСТЫ ---
+# --- ПЛЕЙЛИСТЫ И УПРАВЛЕНИЕ ---
 @dp.callback_query(F.data == "open:playlists")
 async def open_playlists(clb: CallbackQuery):
     await clb.answer()
-    # В плейлистах тоже убираем баннер для экономии места, если он был
     if clb.message.photo:
         await clb.message.delete()
         await clb.message.answer(T(clb.from_user.id, 'playlists_list'), reply_markup=kb.kb_all_playlists(clb.from_user.id), parse_mode="HTML")
@@ -204,7 +171,6 @@ async def view_playlist(clb: CallbackQuery):
     if not tracks: text = T(uid, 'playlist_empty').format(disp_name) 
     else: text = T(uid, 'playlist_view').format(disp_name)
     
-    # Если сообщение с фото (баннер), пересоздаем как текст
     if clb.message.photo:
         await clb.message.delete()
         msg = await clb.message.answer(text, reply_markup=kb.kb_playlist_view(uid, tracks, page_num, pl_name), parse_mode="HTML")
@@ -608,7 +574,6 @@ async def my_profile(clb: CallbackQuery):
     await clb.answer()
     uid = clb.from_user.id
     user = Database.get_user(uid)
-    # В профиле тоже убираем баннер, если есть
     if clb.message.photo:
         await clb.message.delete()
         await clb.message.answer(T(uid, 'profile').format(user.get('nickname', 'User'), user.get('downloads_total', 0), "...", 0), reply_markup=kb.kb_profile(uid), parse_mode="HTML")
@@ -912,3 +877,47 @@ async def announce_fix_handler(msg: types.Message):
             await asyncio.sleep(0.05)
         except: pass
     await msg.answer(f"✅ Готово: {cnt}")
+
+# --- ПОИСК (ВАЖНО: ДОЛЖЕН БЫТЬ В САМОМ КОНЦЕ) ---
+@dp.message(F.text, StateFilter(None), F.chat.type == "private")
+async def text_search(msg: types.Message):
+    uid = msg.from_user.id
+    Database.register_user(uid, msg.from_user.username, msg.from_user.first_name)
+    
+    old_id = Database.get_menu_id(uid)
+    if old_id:
+        try: await bot.delete_message(msg.chat.id, old_id)
+        except: pass
+
+    status_msg = await msg.answer(T(uid, 'search').format(msg.text), parse_mode="HTML")
+    res = await search_yt(msg.text)
+    
+    if res:
+        search_cache[uid] = res
+        await status_msg.edit_text(T(uid, 'select'), reply_markup=kb.kb_search(uid, res, 0), parse_mode="HTML")
+    else:
+        await status_msg.edit_text(T(uid, '404'), parse_mode="HTML")
+        await asyncio.sleep(5)
+        try: await status_msg.delete()
+        except: pass
+        await open_main_menu(uid, msg.chat.id)
+
+@dp.callback_query(F.data == "delete:search")
+async def delete_search_btn(clb: CallbackQuery):
+    await clb.answer()
+    try: await clb.message.delete()
+    except: pass
+    await open_main_menu(clb.from_user.id, clb.message.chat.id)
+
+@dp.callback_query(F.data.startswith("page:"))
+async def search_pagination(clb: CallbackQuery):
+    await clb.answer()
+    try:
+        page = int(clb.data.split(":")[1])
+        uid = clb.from_user.id
+        if uid in search_cache:
+            res = search_cache[uid]
+            await clb.message.edit_text(T(uid, 'select'), reply_markup=kb.kb_search(uid, res, page), parse_mode="HTML")
+        else:
+            await clb.answer("⚠️ Результаты устарели.", show_alert=True)
+    except: pass
