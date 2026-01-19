@@ -59,20 +59,16 @@ def format_title(title, uploader):
             return f"{clean_uploader} - {clean_title}"
     return clean_title
 
-# --- КЛАСС ПОИСКА В ITUNES/SPOTIFY ---
 class MusicSearcher:
     _spotify_token = None
     _token_expiry = 0
 
     @classmethod
     def _get_spotify_token(cls):
-        # Если ключи не заданы - пропускаем
         try:
             if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET: return None
-        except NameError: return None # На случай, если переменных вообще нет
-        
+        except NameError: return None
         if cls._spotify_token and time.time() < cls._token_expiry: return cls._spotify_token
-        
         try:
             auth_str = f"{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}"
             b64_auth = base64.b64encode(auth_str.encode()).decode()
@@ -91,10 +87,9 @@ class MusicSearcher:
         return None
 
     @classmethod
-    def search_spotify(cls, query, limit=10):
+    def search_spotify(cls, query, limit=50):
         token = cls._get_spotify_token()
         if not token: return []
-        
         try:
             resp = requests.get(
                 "https://api.spotify.com/v1/search",
@@ -106,10 +101,6 @@ class MusicSearcher:
             results = []
             for track in data.get("tracks", {}).get("items", []):
                 artists = ", ".join([a["name"] for a in track["artists"]])
-                album = track["album"]["name"]
-                year = track["album"]["release_date"][:4] if track["album"]["release_date"] else ""
-                cover = track["album"]["images"][0]["url"] if track["album"]["images"] else ""
-                
                 results.append({
                     "source": "spotify",
                     "id": track["id"],
@@ -117,17 +108,17 @@ class MusicSearcher:
                     "title": track["name"],
                     "display": f"{artists} - {track['name']}",
                     "meta": {
-                        "album": album,
-                        "year": year,
+                        "album": track["album"]["name"],
+                        "year": track["album"]["release_date"][:4] if track["album"]["release_date"] else "",
                         "genre": "Music",
-                        "cover": cover
+                        "cover": track["album"]["images"][0]["url"] if track["album"]["images"] else ""
                     }
                 })
             return results
         except: return []
 
     @classmethod
-    def search_itunes(cls, query, limit=15):
+    def search_itunes(cls, query, limit=50):
         try:
             clean_q = re.sub(r'[^\w\s]', '', query)
             resp = requests.get(
@@ -157,16 +148,26 @@ class MusicSearcher:
 
     @classmethod
     def search_integrated(cls, query):
-        # 1. Spotify
-        res = cls.search_spotify(query, limit=10)
-        if res: return res
+        # Запрашиваем по 50 из каждого, чтобы после фильтрации точно осталось 50 уникальных
+        s_res = cls.search_spotify(query, limit=50)
+        i_res = cls.search_itunes(query, limit=50)
         
-        # 2. iTunes (Основной вариант)
-        res = cls.search_itunes(query, limit=15)
-        return res
+        combined = s_res + i_res
+        final_results = []
+        seen = set()
 
-def clean_for_genius(text):
-    return clean_string(text)
+        for item in combined:
+            # Уникальный ключ по артисту и названию (без пробелов и в лоуеркейсе)
+            key = re.sub(r'\s+', '', f"{item['artist']}|{item['title']}".lower())
+            
+            if key not in seen:
+                seen.add(key)
+                final_results.append(item)
+                # Как только набрали 50 уникальных — останавливаемся
+                if len(final_results) >= 50:
+                    break
+        
+        return final_results
 
 def split_playlist_name(pl_name):
     if not pl_name: return None, ""
