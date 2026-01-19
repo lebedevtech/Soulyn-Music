@@ -1,0 +1,26 @@
+# --- Python & System ---
+__pycache__/
+*.pyc
+venv/
+.DS_Store
+
+# --- Environment & Secrets (Самое важное) ---
+.env
+.env.prod
+.env.dev
+
+# --- Data & Media ---
+downloads/
+data/
+*.db
+*.sqlite3
+
+# --- Logs & Errors ---
+*.log
+
+# --- IDE Settings (Чтобы настройки VS Code/PyCharm не лезли в Git) ---
+.idea/
+.vscode/
+
+# --- Misc ---
+*.exe
