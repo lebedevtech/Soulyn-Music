@@ -1,32 +1,16 @@
-# --- ФАЙЛ С ТЕКСТАМИ (BRAND UPDATE) ---
+from bot.database import Database
 
+# ==========================================
+# 🇷🇺 RUSSIAN (РУССКИЙ)
+# ==========================================
 RU_TEXTS = {
-    # ГЛАВНОЕ МЕНЮ
-    'menu': (
-        "🎧 <b>SOULYN MUSIC</b>\n"
-        "<i>Your Soul. Your Sound.</i>\n\n"
-        "🎵 <b>Моя медиатека</b>\n"
-        "Избранное и плейлисты.\n\n"
-        "🔍 <b>Поиск</b>\n"
-        "Миллионы треков в высоком качестве.\n\n"
-        "<i>Просто отправь название трека или начни ниже</i> 👇"
-    ),
-    
-    # ПРИВЕТСТВИЕ
-    'welcome': (
-        "👋 <b>Привет, {}!</b>\n\n"
-        "Добро пожаловать в <b>Soulyn Music</b>.\n"
-        "<i>Your Soul. Your Sound.</i>\n\n"
-        "Выбери язык / Choose language:"
-    ),
-    
-    # ... (ОСТАЛЬНОЕ ОСТАВЛЯЕМ БЕЗ ИЗМЕНЕНИЙ, КАК БЫЛО) ...
+    'menu': "🎧 <b>SOULYN MUSIC</b>\n<i>Your Soul. Your Sound.</i>\n\n🎵 <b>Моя медиатека</b>\nИзбранное и плейлисты.\n\n🔍 <b>Поиск</b>\nМиллионы треков в высоком качестве.\n\n<i>Просто отправь название трека или начни ниже</i> 👇",
+    'welcome': "👋 <b>Привет, {}!</b>\n\nДобро пожаловать в <b>Soulyn Music</b>.\n<i>Your Soul. Your Sound.</i>\n\nВыбери язык / Choose language:",
     'search_mode_text': "🔍 <b>Поиск</b>\n\nОтправь название трека, имя артиста или ссылку (Spotify/Apple).",
     'dl': "☁️ <b>Загрузка...</b>",
     'err': "❌ <b>Ошибка загрузки.</b>",
     '404': "😔 <b>Ничего не найдено.</b>",
     'limit_reached': "⚠️ <b>Лимит исчерпан.</b>\nЗарегистрируйтесь, чтобы продолжить.",
-    
     'btn_search_main': "🔍 Найти трек",
     'btn_fav_icon': "❤️ Избранное",
     'btn_open_pl': "📂 Плейлисты",
@@ -37,7 +21,6 @@ RU_TEXTS = {
     'btn_close': "Закрыть",
     'btn_ok': "Ок",
     'btn_cancel_search': "Отмена",
-    
     'playlists_list': "<b>📂 Плейлисты</b>\nТвои музыкальные подборки.",
     'playlist_view': "<b>{}</b>",
     'playlist_empty': "<b>{}</b>\nЗдесь пока пусто.",
@@ -50,7 +33,6 @@ RU_TEXTS = {
     'pl_del_confirm': "Удалить плейлист <b>{}</b>?",
     'pl_enter_new_name': "Новое название:",
     'pl_select_icon': "Иконка:",
-    
     'btn_pl_add_track': "➕ Трек",
     'btn_pl_opts': "⚡️ Опции",
     'btn_rename_pl': "✏️ Имя",
@@ -66,7 +48,6 @@ RU_TEXTS = {
     'added_to_pl': "✅ Добавлено в <b>{}</b>",
     'add_to_pl': "➕ В плейлист",
     'select_playlist': "Куда добавить?",
-    
     'select': "Результаты:",
     'btn_lyrics_short': "📜 Текст",
     'searching_lyrics': "🔍 <b>Ищу текст...</b>",
@@ -77,19 +58,16 @@ RU_TEXTS = {
     'track_removed': "🗑 Удалено.",
     'track_moved': "✅ Перемещено.",
     'select_move_target': "Куда переместить?",
-    
     'profile': "👤 <b>{}</b>\n\n🎧 Треков: <b>{}</b>\n💎 План: <b>Free</b>",
     'settings': "<b>⚙️ Настройки</b>",
     'lang_set': "Язык: Русский 🇷🇺",
     'btn_lang': "🇷🇺 Язык / Language",
     'btn_support': "💬 Поддержка",
     'btn_channel': "📢 Новости",
-    
     'ticket_ask': "✍️ <b>Поддержка</b>\nОпишите проблему или идею.",
     'btn_cancel_ticket': "Отмена",
     'ticket_sent': "✅ <b>Отправлено.</b> Ждите ответа.",
     'ticket_reply': "📩 <b>Ответ:</b>\n\n{}",
-    
     'ask_nick': "Как к тебе обращаться?",
     'ask_genres': "Любимые жанры (выбери пару):",
     'btn_confirm': "Готово",
@@ -98,7 +76,6 @@ RU_TEXTS = {
     'btn_go_reg': "Регистрация",
     'btn_sure_guest': "Я только посмотреть",
     'guest_mode': "Режим гостя.",
-    
     'del_confirm': "⚠️ <b>Удалить аккаунт?</b>\nВсё будет стерто.",
     'del_success': "Аккаунт удален.",
     'btn_restore': "Восстановить",
@@ -106,31 +83,17 @@ RU_TEXTS = {
     'btn_guest': "Войти как гость"
 }
 
+# ==========================================
+# 🇬🇧 ENGLISH (АНГЛИЙСКИЙ)
+# ==========================================
 EN_TEXTS = {
-    'menu': (
-        "🎧 <b>SOULYN MUSIC</b>\n"
-        "<i>Your Soul. Your Sound.</i>\n\n"
-        "🎵 <b>My Library</b>\n"
-        "Favorites and playlists.\n\n"
-        "🔍 <b>Search</b>\n"
-        "Millions of songs in high quality.\n\n"
-        "<i>Just send a track name or start below</i> 👇"
-    ),
-    
-    'welcome': (
-        "👋 <b>Hi, {}!</b>\n\n"
-        "Welcome to <b>Soulyn Music</b>.\n"
-        "<i>Your Soul. Your Sound.</i>\n\n"
-        "Choose language:"
-    ),
-    
-    # ... (Остальной английский текст оставляем без изменений) ...
+    'menu': "🎧 <b>SOULYN MUSIC</b>\n<i>Your Soul. Your Sound.</i>\n\n🎵 <b>My Library</b>\nFavorites and playlists.\n\n🔍 <b>Search</b>\nMillions of songs in high quality.\n\n<i>Just send a track name or start below</i> 👇",
+    'welcome': "👋 <b>Hi, {}!</b>\n\nWelcome to <b>Soulyn Music</b>.\n<i>Your Soul. Your Sound.</i>\n\nChoose language:",
     'search_mode_text': "🔍 <b>Search</b>\n\nSend track name, artist, or link.",
     'dl': "☁️ <b>Downloading...</b>",
     'err': "❌ <b>Download error.</b>",
     '404': "😔 <b>Not found.</b>",
     'limit_reached': "⚠️ <b>Limit reached.</b>\nPlease register.",
-    
     'btn_search_main': "🔍 Search",
     'btn_fav_icon': "❤️ Favorites",
     'btn_open_pl': "📂 Playlists",
@@ -141,7 +104,6 @@ EN_TEXTS = {
     'btn_close': "Close",
     'btn_ok': "Ok",
     'btn_cancel_search': "Cancel",
-    
     'playlists_list': "<b>📂 Your Playlists</b>",
     'playlist_view': "<b>{}</b>",
     'playlist_empty': "<b>{}</b>\nEmpty here.",
@@ -154,13 +116,12 @@ EN_TEXTS = {
     'pl_del_confirm': "Delete <b>{}</b>?",
     'pl_enter_new_name': "New name:",
     'pl_select_icon': "Icon:",
-    
     'btn_pl_add_track': "➕ Add",
     'btn_pl_opts': "⚡️ Options",
     'btn_rename_pl': "✏️ Rename",
     'btn_icon_pl': "🎨 Icon",
     'btn_delete_pl': "🗑 Delete",
-    'btn_yes_del': "Yes",
+    'btn_yes_del': "Yes, delete",
     'btn_from_fav': "Favorites",
     'btn_search_new': "Search",
     'btn_back_to_pl': "« Back",
@@ -170,7 +131,6 @@ EN_TEXTS = {
     'added_to_pl': "✅ Added to <b>{}</b>",
     'add_to_pl': "➕ Playlist",
     'select_playlist': "Choose playlist:",
-    
     'select': "Results:",
     'btn_lyrics_short': "📜 Lyrics",
     'searching_lyrics': "🔍 <b>Searching...</b>",
@@ -181,19 +141,16 @@ EN_TEXTS = {
     'track_removed': "🗑 Removed.",
     'track_moved': "✅ Moved.",
     'select_move_target': "Move where?",
-    
     'profile': "👤 <b>{}</b>\n\n🎧 Tracks: <b>{}</b>\n💎 Plan: <b>Free</b>",
     'settings': "<b>⚙️ Settings</b>",
     'lang_set': "Language: English 🇬🇧",
     'btn_lang': "🇬🇧 Language",
     'btn_support': "💬 Support",
     'btn_channel': "📢 News",
-    
     'ticket_ask': "✍️ <b>Support</b>\nDescribe your issue.",
     'btn_cancel_ticket': "Cancel",
     'ticket_sent': "✅ <b>Sent.</b>",
     'ticket_reply': "📩 <b>Reply:</b>\n\n{}",
-    
     'ask_nick': "Your name?",
     'ask_genres': "Favorite genres:",
     'btn_confirm': "Done",
@@ -202,7 +159,6 @@ EN_TEXTS = {
     'btn_go_reg': "Register",
     'btn_sure_guest': "Just Browsing",
     'guest_mode': "Guest mode.",
-    
     'del_confirm': "⚠️ <b>Delete Account?</b>",
     'del_success': "Account deleted.",
     'btn_restore': "Restore",
@@ -210,9 +166,359 @@ EN_TEXTS = {
     'btn_guest': "Guest Login"
 }
 
+# ==========================================
+# 🇺🇦 UKRAINIAN (УКРАИНСКИЙ)
+# ==========================================
+UA_TEXTS = {
+    'menu': "🎧 <b>SOULYN MUSIC</b>\n<i>Your Soul. Your Sound.</i>\n\n🎵 <b>Моя медіатека</b>\nУлюблене та плейлисти.\n\n🔍 <b>Пошук</b>\nМільйони треків у високій якості.\n\n<i>Надішли назву треку або почни нижче</i> 👇",
+    'welcome': "👋 <b>Привіт, {}!</b>\n\nЛаскаво просимо до <b>Soulyn Music</b>.\n<i>Your Soul. Your Sound.</i>\n\nОбери мову:",
+    'search_mode_text': "🔍 <b>Пошук</b>\n\nНадішли назву треку, виконавця або посилання.",
+    'dl': "☁️ <b>Завантаження...</b>",
+    'err': "❌ <b>Помилка завантаження.</b>",
+    '404': "😔 <b>Нічого не знайдено.</b>",
+    'limit_reached': "⚠️ <b>Ліміт вичерпано.</b>\nЗареєструйтесь, щоб продовжити.",
+    'btn_search_main': "🔍 Знайти",
+    'btn_fav_icon': "❤️ Улюблене",
+    'btn_open_pl': "📂 Плейлисти",
+    'btn_profile_short': "👤 Профіль",
+    'btn_reg': "✨ Реєстрація",
+    'btn_set': "⚙️ Налаштування",
+    'btn_back': "Назад",
+    'btn_close': "Закрити",
+    'btn_ok': "Ок",
+    'btn_cancel_search': "Скасувати",
+    'playlists_list': "<b>📂 Плейлисти</b>\nТвої музичні добірки.",
+    'playlist_view': "<b>{}</b>",
+    'playlist_empty': "<b>{}</b>\nТут поки порожньо.",
+    'pl_create': "➕ Новий плейлист",
+    'pl_ask_name': "<b>Назва плейлиста</b>\nНаприклад: <i>Vibe 2026</i>",
+    'pl_created': "✅ Плейлист <b>{}</b> створено.",
+    'pl_exists': "⚠️ Такий плейлист вже є.",
+    'pl_renamed': "✏️ Перейменовано на <b>{}</b>.",
+    'pl_deleted': "🗑 Плейлист видалено.",
+    'pl_del_confirm': "Видалити плейлист <b>{}</b>?",
+    'pl_enter_new_name': "Нова назва:",
+    'pl_select_icon': "Іконка:",
+    'btn_pl_add_track': "➕ Трек",
+    'btn_pl_opts': "⚡️ Опції",
+    'btn_rename_pl': "✏️ Ім'я",
+    'btn_icon_pl': "🎨 Іконка",
+    'btn_delete_pl': "🗑 Видалити",
+    'btn_yes_del': "Так, видалити",
+    'btn_from_fav': "З Улюбленого",
+    'btn_search_new': "Через пошук",
+    'btn_back_to_pl': "« Назад",
+    'add_track_title': "<b>Додати до {}</b>",
+    'select_from_fav': "Оберіть трек:",
+    'search_tip_pl': "Знайди трек через пошук і натисни «Додати в плейлист».",
+    'added_to_pl': "✅ Додано в <b>{}</b>",
+    'add_to_pl': "➕ В плейлист",
+    'select_playlist': "Куди додати?",
+    'select': "Результати:",
+    'btn_lyrics_short': "📜 Текст",
+    'searching_lyrics': "🔍 <b>Шукаю текст...</b>",
+    'added_to_fav_msg': "❤️ Додано",
+    'removed_from_fav_msg': "💔 Вилучено",
+    'btn_remove_track': "🗑",
+    'btn_move_track': "➡️",
+    'track_removed': "🗑 Вилучено.",
+    'track_moved': "✅ Переміщено.",
+    'select_move_target': "Куди перемістити?",
+    'profile': "👤 <b>{}</b>\n\n🎧 Треків: <b>{}</b>\n💎 План: <b>Free</b>",
+    'settings': "<b>⚙️ Налаштування</b>",
+    'lang_set': "Мова: Українська 🇺🇦",
+    'btn_lang': "🇺🇦 Мова / Language",
+    'btn_support': "💬 Підтримка",
+    'btn_channel': "📢 Новини",
+    'ticket_ask': "✍️ <b>Підтримка</b>\nОпишіть проблему або ідею.",
+    'btn_cancel_ticket': "Скасувати",
+    'ticket_sent': "✅ <b>Надіслано.</b> Чекайте на відповідь.",
+    'ticket_reply': "📩 <b>Відповідь:</b>\n\n{}",
+    'ask_nick': "Як до тебе звертатися?",
+    'ask_genres': "Улюблені жанри:",
+    'btn_confirm': "Готово",
+    'reg_success': "✅ <b>Ласкаво просимо, {}!</b>",
+    'guest_warning': "Статистика не збережеться. Продовжити?",
+    'btn_go_reg': "Реєстрація",
+    'btn_sure_guest': "Я тільки подивитися",
+    'guest_mode': "Режим гостя.",
+    'del_confirm': "⚠️ <b>Видалити акаунт?</b>\nВсе буде стерто.",
+    'del_success': "Акаунт видалено.",
+    'btn_restore': "Відновити",
+    'restored': "✅ Відновлено!",
+    'btn_guest': "Увійти як гість"
+}
+
+# ==========================================
+# 🇰🇿 KAZAKH (КАЗАХСКИЙ)
+# ==========================================
+KZ_TEXTS = {
+    'menu': "🎧 <b>SOULYN MUSIC</b>\n<i>Your Soul. Your Sound.</i>\n\n🎵 <b>Менің медиатекам</b>\nТаңдаулылар мен плейлисттер.\n\n🔍 <b>Іздеу</b>\nЖоғары сапалы миллиондаған тректер.\n\n<i>Трек атауын жіберіңіз немесе төменнен бастаңыз</i> 👇",
+    'welcome': "👋 <b>Сәлем, {}!</b>\n\n<b>Soulyn Music</b>-ке қош келдіңіз.\n<i>Your Soul. Your Sound.</i>\n\nТілді таңдаңыз:",
+    'search_mode_text': "🔍 <b>Іздеу</b>\n\nТрек атауын, орындаушыны немесе сілтемені жіберіңіз.",
+    'dl': "☁️ <b>Жүктелуде...</b>",
+    'err': "❌ <b>Жүктеу қатесі.</b>",
+    '404': "😔 <b>Ештеңе табылмады.</b>",
+    'limit_reached': "⚠️ <b>Лимит таусылды.</b>\nЖалғастыру үшін тіркеліңіз.",
+    'btn_search_main': "🔍 Трек іздеу",
+    'btn_fav_icon': "❤️ Таңдаулылар",
+    'btn_open_pl': "📂 Плейлисттер",
+    'btn_profile_short': "👤 Профиль",
+    'btn_reg': "✨ Тіркелу",
+    'btn_set': "⚙️ Баптаулар",
+    'btn_back': "Артқа",
+    'btn_close': "Жабу",
+    'btn_ok': "Ок",
+    'btn_cancel_search': "Бас тарту",
+    'playlists_list': "<b>📂 Плейлисттер</b>\nСіздің музыкалық жинақтарыңыз.",
+    'playlist_view': "<b>{}</b>",
+    'playlist_empty': "<b>{}</b>\nМұнда әзірге бос.",
+    'pl_create': "➕ Жаңа плейлист",
+    'pl_ask_name': "<b>Плейлист атауы</b>\nМысалы: <i>Vibe 2026</i>",
+    'pl_created': "✅ <b>{}</b> плейлисті жасалды.",
+    'pl_exists': "⚠️ Мұндай плейлист бар.",
+    'pl_renamed': "✏️ Атауы <b>{}</b> болып өзгертілді.",
+    'pl_deleted': "🗑 Плейлист өшірілді.",
+    'pl_del_confirm': "<b>{}</b> плейлистін өшіру керек пе?",
+    'pl_enter_new_name': "Жаңа атауы:",
+    'pl_select_icon': "Иконка:",
+    'btn_pl_add_track': "➕ Трек",
+    'btn_pl_opts': "⚡️ Опциялар",
+    'btn_rename_pl': "✏️ Аты",
+    'btn_icon_pl': "🎨 Иконка",
+    'btn_delete_pl': "🗑 Өшіру",
+    'btn_yes_del': "Иә, өшіру",
+    'btn_from_fav': "Таңдаулыдан",
+    'btn_search_new': "Іздеу арқылы",
+    'btn_back_to_pl': "« Артқа",
+    'add_track_title': "<b>{} жинағына қосу</b>",
+    'select_from_fav': "Тректі таңдаңыз:",
+    'search_tip_pl': "Іздеу арқылы тректі тауып, «Плейлистке қосу» түймесін басыңыз.",
+    'added_to_pl': "✅ <b>{}</b> жинағына қосылды",
+    'add_to_pl': "➕ Плейлистке",
+    'select_playlist': "Қайда қосу керек?",
+    'select': "Нәтижелер:",
+    'btn_lyrics_short': "📜 Мәтін",
+    'searching_lyrics': "🔍 <b>Мәтін ізделуде...</b>",
+    'added_to_fav_msg': "❤️ Қосылды",
+    'removed_from_fav_msg': "💔 Жойылды",
+    'btn_remove_track': "🗑",
+    'btn_move_track': "➡️",
+    'track_removed': "🗑 Жойылды.",
+    'track_moved': "✅ Көшірілді.",
+    'select_move_target': "Қайда көшіру керек?",
+    'profile': "👤 <b>{}</b>\n\n🎧 Тректер: <b>{}</b>\n💎 План: <b>Free</b>",
+    'settings': "<b>⚙️ Баптаулар</b>",
+    'lang_set': "Тіл: Қазақ тілі 🇰🇿",
+    'btn_lang': "🇰🇿 Тіл / Language",
+    'btn_support': "💬 Қолдау",
+    'btn_channel': "📢 Жаңалықтар",
+    'ticket_ask': "✍️ <b>Қолдау</b>\nМәселені немесе идеяны сипаттаңыз.",
+    'btn_cancel_ticket': "Бас тарту",
+    'ticket_sent': "✅ <b>Жіберілді.</b> Жауапты күтіңіз.",
+    'ticket_reply': "📩 <b>Жауап:</b>\n\n{}",
+    'ask_nick': "Сізді қалай атаған жөн?",
+    'ask_genres': "Сүйікті жанрлар:",
+    'btn_confirm': "Дайын",
+    'reg_success': "✅ <b>Қош келдіңіз, {}!</b>",
+    'guest_warning': "Статистика сақталмайды. Жалғастыру керек пе?",
+    'btn_go_reg': "Тіркелу",
+    'btn_sure_guest': "Тек көру",
+    'guest_mode': "Қонақ режимі.",
+    'del_confirm': "⚠️ <b>Аккаунтты өшіру керек пе?</b>\nБарлығы жойылады.",
+    'del_success': "Аккаунт өшірілді.",
+    'btn_restore': "Қалпына келтіру",
+    'restored': "✅ Қалпына келтірілді!",
+    'btn_guest': "Қонақ ретінде кіру"
+}
+
+# ==========================================
+# 🇺🇿 UZBEK (УЗБЕКСКИЙ)
+# ==========================================
+UZ_TEXTS = {
+    'menu': "🎧 <b>SOULYN MUSIC</b>\n<i>Your Soul. Your Sound.</i>\n\n🎵 <b>Mening kutubxonam</b>\nSevimlilar va pleylistlar.\n\n🔍 <b>Qidiruv</b>\nYuqori sifatli millionlab treklar.\n\n<i>Trek nomini yuboring yoki pastdan boshlang</i> 👇",
+    'welcome': "👋 <b>Salom, {}!</b>\n\n<b>Soulyn Music</b>-ga xush kelibsiz.\n<i>Your Soul. Your Sound.</i>\n\nTilni tanlang:",
+    'search_mode_text': "🔍 <b>Qidiruv</b>\n\nTrek nomi, ijrochi yoki havola yuboring.",
+    'dl': "☁️ <b>Yuklanmoqda...</b>",
+    'err': "❌ <b>Yuklashda xato.</b>",
+    '404': "😔 <b>Hech narsa topilmadi.</b>",
+    'limit_reached': "⚠️ <b>Limit tugadi.</b>\nDavom etish uchun ro'yxatdan o'ting.",
+    'btn_search_main': "🔍 Trek qidirish",
+    'btn_fav_icon': "❤️ Sevimlilar",
+    'btn_open_pl': "📂 Pleylistlar",
+    'btn_profile_short': "👤 Profil",
+    'btn_reg': "✨ Ro'yxatdan o'tish",
+    'btn_set': "⚙️ Sozlamalar",
+    'btn_back': "Orqaga",
+    'btn_close': "Yopish",
+    'btn_ok': "Ok",
+    'btn_cancel_search': "Bekor qilish",
+    'playlists_list': "<b>📂 Pleylistlar</b>\nSizning musiqiy to'plamlaringiz.",
+    'playlist_view': "<b>{}</b>",
+    'playlist_empty': "<b>{}</b>\nBu yerda hozircha bo'sh.",
+    'pl_create': "➕ Yangi pleylist",
+    'pl_ask_name': "<b>Pleylist nomi</b>\nMasalan: <i>Vibe 2026</i>",
+    'pl_created': "✅ <b>{}</b> pleylisti yaratildi.",
+    'pl_exists': "⚠️ Bunday pleylist mavjud.",
+    'pl_renamed': "✏️ Nomi <b>{}</b>-ga o'zgartirildi.",
+    'pl_deleted': "🗑 Pleylist o'chirildi.",
+    'pl_del_confirm': "<b>{}</b> pleylistini o'chirib tashlaysizmi?",
+    'pl_enter_new_name': "Yangi nom:",
+    'pl_select_icon': "Ikonka:",
+    'btn_pl_add_track': "➕ Trek",
+    'btn_pl_opts': "⚡️ Opsiyalar",
+    'btn_rename_pl': "✏️ Ism",
+    'btn_icon_pl': "🎨 Ikonka",
+    'btn_delete_pl': "🗑 O'chirish",
+    'btn_yes_del': "Ha, o'chirish",
+    'btn_from_fav': "Sevimlilardan",
+    'btn_search_new': "Qidiruv orqali",
+    'btn_back_to_pl': "« Orqaga",
+    'add_track_title': "<b>{} to'plamiga qo'shish</b>",
+    'select_from_fav': "Trekni tanlang:",
+    'search_tip_pl': "Trekni qidiruv orqali toping va «Pleylistga qo'shish» tugmasini bosing.",
+    'added_to_pl': "✅ <b>{}</b>-ga qo'shildi",
+    'add_to_pl': "➕ Pleylistga",
+    'select_playlist': "Qayerga qo'shish kerak?",
+    'select': "Natijalar:",
+    'btn_lyrics_short': "📜 Matn",
+    'searching_lyrics': "🔍 <b>Matn qidirilmoqda...</b>",
+    'added_to_fav_msg': "❤️ Qo'shildi",
+    'removed_from_fav_msg': "💔 O'chirildi",
+    'btn_remove_track': "🗑",
+    'btn_move_track': "➡️",
+    'track_removed': "🗑 O'chirildi.",
+    'track_moved': "✅ Ko'chirildi.",
+    'select_move_target': "Qayerga ko'chirish kerak?",
+    'profile': "👤 <b>{}</b>\n\n🎧 Treklar: <b>{}</b>\n💎 Plan: <b>Free</b>",
+    'settings': "<b>⚙️ Sozlamalar</b>",
+    'lang_set': "Til: O'zbek tili 🇺🇿",
+    'btn_lang': "🇺🇿 Til / Language",
+    'btn_support': "💬 Qo'llab-quvvatlash",
+    'btn_channel': "📢 Yangiliklar",
+    'ticket_ask': "✍️ <b>Yordam</b>\nMuammo yoki g'oyangizni yozing.",
+    'btn_cancel_ticket': "Bekor qilish",
+    'ticket_sent': "✅ <b>Yuborildi.</b> Javobni kuting.",
+    'ticket_reply': "📩 <b>Javob:</b>\n\n{}",
+    'ask_nick': "Sizga qanday murojaat qilishimiz mumkin?",
+    'ask_genres': "Sevimli janrlar:",
+    'btn_confirm': "Tayyor",
+    'reg_success': "✅ <b>Xush kelibsiz, {}!</b>",
+    'guest_warning': "Statistika saqlanmaydi. Davom etasizmi?",
+    'btn_go_reg': "Ro'yxatdan o'tish",
+    'btn_sure_guest': "Faqat ko'rish",
+    'guest_mode': "Mehmon rejimi.",
+    'del_confirm': "⚠️ <b>Akkauntni o'chirasizmi?</b>\nHamma narsa o'chib ketadi.",
+    'del_success': "Akkaunt o'chirildi.",
+    'btn_restore': "Tiklash",
+    'restored': "✅ Tiklandi!",
+    'btn_guest': "Mehmon bo'lib kirish"
+}
+
+# ==========================================
+# 🇦🇪 ARABIC (АРАБСКИЙ)
+# ==========================================
+AR_TEXTS = {
+    'menu': "🎧 <b>SOULYN MUSIC</b>\n<i>Your Soul. Your Sound.</i>\n\n🎵 <b>مكتبتي</b>\nالمفضلة وقوائم التشغيل.\n\n🔍 <b>بحث</b>\nملايين الأغاني بجودة عالية.\n\n<i>أرسل اسم الأغنية أو ابدأ من الأسفل</i> 👇",
+    'welcome': "👋 <b>مرحباً، {}!</b>\n\nمرحباً بك في <b>Soulyn Music</b>.\n<i>Your Soul. Your Sound.</i>\n\nاختر اللغة:",
+    'search_mode_text': "🔍 <b>بحث</b>\n\nأرسل اسم الأغنية أو الفنان أو الرابط.",
+    'dl': "☁️ <b>جاري التحميل...</b>",
+    'err': "❌ <b>خطأ في التحميل.</b>",
+    '404': "😔 <b>لم يتم العثور على شيء.</b>",
+    'limit_reached': "⚠️ <b>انتهى الحد المسموح.</b>\nيرجى التسجيل للمتابعة.",
+    'btn_search_main': "🔍 بحث عن أغنية",
+    'btn_fav_icon': "❤️ المفضلة",
+    'btn_open_pl': "📂 قوائم التشغيل",
+    'btn_profile_short': "👤 الملف الشخصي",
+    'btn_reg': "✨ تسجيل",
+    'btn_set': "⚙️ الإعدادات",
+    'btn_back': "رجوع",
+    'btn_close': "إغلاق",
+    'btn_ok': "موافق",
+    'btn_cancel_search': "إلغاء",
+    'playlists_list': "<b>📂 قوائم التشغيل</b>\nمجموعاتك الموسيقية.",
+    'playlist_view': "<b>{}</b>",
+    'playlist_empty': "<b>{}</b>\nلا يوجد شيء هنا بعد.",
+    'pl_create': "➕ قائمة جديدة",
+    'pl_ask_name': "<b>اسم قائمة التشغيل</b>\nمثال: <i>Vibe 2026</i>",
+    'pl_created': "✅ تم إنشاء القائمة <b>{}</b>.",
+    'pl_exists': "⚠️ هذه القائمة موجودة بالفعل.",
+    'pl_renamed': "✏️ تم تغيير الاسم إلى <b>{}</b>.",
+    'pl_deleted': "🗑 تم حذف القائمة.",
+    'pl_del_confirm': "هل تريد حذف القائمة <b>{}</b>؟",
+    'pl_enter_new_name': "الاسم الجديد:",
+    'pl_select_icon': "الأيقونة:",
+    'btn_pl_add_track': "➕ أغنية",
+    'btn_pl_opts': "⚡️ خيارات",
+    'btn_rename_pl': "✏️ الاسم",
+    'btn_icon_pl': "🎨 أيقونة",
+    'btn_delete_pl': "🗑 حذف",
+    'btn_yes_del': "نعم، حذف",
+    'btn_from_fav': "من المفضلة",
+    'btn_search_new': "عبر البحث",
+    'btn_back_to_pl': "« رجوع",
+    'add_track_title': "<b>إضافة إلى {}</b>",
+    'select_from_fav': "اختر أغنية:",
+    'search_tip_pl': "ابحث عن أغنية واضغط على «إضافة إلى القائمة».",
+    'added_to_pl': "✅ تمت الإضافة إلى <b>{}</b>",
+    'add_to_pl': "➕ إلى القائمة",
+    'select_playlist': "إلى أين تريد الإضافة؟",
+    'select': "النتائج:",
+    'btn_lyrics_short': "📜 الكلمات",
+    'searching_lyrics': "🔍 <b>جاري البحث عن الكلمات...</b>",
+    'added_to_fav_msg': "❤️ تمت الإضافة",
+    'removed_from_fav_msg': "💔 تم الإزالة",
+    'btn_remove_track': "🗑",
+    'btn_move_track': "➡️",
+    'track_removed': "🗑 تم الحذف.",
+    'track_moved': "✅ تم النقل.",
+    'select_move_target': "إلى أين تريد النقل؟",
+    'profile': "👤 <b>{}</b>\n\n🎧 الأغاني: <b>{}</b>\n💎 الخطة: <b>Free</b>",
+    'settings': "<b>⚙️ الإعدادات</b>",
+    'lang_set': "اللغة: العربية 🇦🇪",
+    'btn_lang': "🇦🇪 اللغة / Language",
+    'btn_support': "💬 الدعم",
+    'btn_channel': "📢 الأخبار",
+    'ticket_ask': "✍️ <b>الدعم</b>\nصف مشكلتك أو فكرتك.",
+    'btn_cancel_ticket': "إلغاء",
+    'ticket_sent': "✅ <b>تم الإرسال.</b> انتظر الرد.",
+    'ticket_reply': "📩 <b>الرد:</b>\n\n{}",
+    'ask_nick': "ماذا ناديك؟",
+    'ask_genres': "الأنواع المفضلة:",
+    'btn_confirm': "تم",
+    'reg_success': "✅ <b>مرحباً بك، {}!</b>",
+    'guest_warning': "لن يتم حفظ الإحصائيات. هل تريد الاستمرار؟",
+    'btn_go_reg': "تسجيل",
+    'btn_sure_guest': "مجرد مشاهدة",
+    'guest_mode': "وضع الضيف.",
+    'del_confirm': "⚠️ <b>حذف الحساب؟</b>\nسيتم مسح كل شيء.",
+    'del_success': "تم حذف الحساب.",
+    'btn_restore': "استعادة",
+    'restored': "✅ تمت الاستعادة!",
+    'btn_guest': "الدخول كضيف"
+}
+
+# ==========================================
+# ⚙️ MAPPING & HELPER
+# ==========================================
+LANGUAGES = {
+    'ru': RU_TEXTS,
+    'en': EN_TEXTS,
+    'ua': UA_TEXTS,
+    'kz': KZ_TEXTS,
+    'uz': UZ_TEXTS,
+    'ar': AR_TEXTS
+}
+
 def T(uid, key):
-    from bot.database import Database
     user = Database.get_user(uid)
-    lang = user.get("lang", "ru") if user else "ru"
-    if lang == "ru": return RU_TEXTS.get(key, key)
-    return EN_TEXTS.get(key, key)
+    # По умолчанию русский ('ru')
+    lang_code = user.get("lang", "ru") if user else "ru"
+    
+    # Берем нужный словарь, если нет — берем русский
+    selected_dict = LANGUAGES.get(lang_code, RU_TEXTS)
+    
+    # Пытаемся взять значение из выбранного языка, 
+    # если его там нет — берем из русского, 
+    # если и там нет — возвращаем сам ключ
+    return selected_dict.get(key, RU_TEXTS.get(key, key))
