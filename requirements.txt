@@ -2,6 +2,10 @@ aiogram
 python-dotenv
 yt-dlp
 requests
-beautifulsoup4 
+beautifulsoup4
 lyricsgenius
 emoji
+aiosqlite
+httpx
+matplotlib
+shazamio

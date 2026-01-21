@@ -1,48 +1,65 @@
-import sys
-import os
 import asyncio
 import logging
+import sys
+import os
+from aiogram.types import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
+from bot.config import ADMIN_ID
+from bot.database import Database
 
-# --- ПРОВЕРКА ОКРУЖЕНИЯ ---
-try:
-    from dotenv import load_dotenv
-except ImportError:
-    print("\n❌ ОШИБКА: Библиотеки не найдены!")
-    print("Похоже, вы запустили бота не через виртуальное окружение.")
-    print("👉 Используйте команду: .\\venv\\Scripts\\python run.py\n")
-    sys.exit(1)
+# 1. НАСТРОЙКА ПУТЕЙ И OKРУЖЕНИЯ
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BIN_DIR = os.path.join(BASE_DIR, "bin")
+if os.path.exists(BIN_DIR):
+    os.environ["PATH"] += os.pathsep + BIN_DIR
 
-# --- ИМПОРТЫ БОТА ---
-try:
-    from bot.loader import dp, bot as telegram_bot, logger
-    import bot.handlers
-    from bot.database import Database
-except ImportError as e:
-    print(f"\n❌ ОШИБКА ИМПОРТА: {e}")
-    print("Проверьте, что файл .env создан и библиотека python-dotenv установлена.\n")
-    sys.exit(1)
+# 2. СОЗДАНИЕ ВАЖНЫХ ПАПОК
+if not os.path.exists("downloads"): os.makedirs("downloads")
+if not os.path.exists("data"): os.makedirs("data")
+
+logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+
+async def set_bot_commands(bot):
+    user_commands = [
+        BotCommand(command="start", description="🏠 Главное меню"),
+        BotCommand(command="ticket", description="🆘 Написать в поддержку"),
+        BotCommand(command="settings", description="⚙️ Настройки языка"),
+    ]
+    await bot.set_my_commands(user_commands, scope=BotCommandScopeDefault())
+
+    admin_commands = user_commands + [
+        BotCommand(command="admin", description="👑 Админ-панель"),
+        BotCommand(command="broadcast", description="📢 Рассылка"),
+    ]
+    try:
+        await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=ADMIN_ID))
+    except: pass
 
 async def main():
-    logger.info("🚀 Starting Soulyn Music Bot...")
+    print("⏳ Импортируем библиотеки...")
+    try:
+        from bot.loader import bot as tg_bot, dp
+        import bot.handlers  
+        
+        # 🔥 Инициализируем БД
+        print("🗄 Подключаем базу данных...")
+        await Database.init_db()
+        print("✅ Библиотеки успешно загружены!")
+    except Exception as e:
+        print(f"\n❌ ОШИБКА: {e}")
+        raise e
 
-    # 👇 ИСПРАВЛЕНИЕ: Убрали await, так как функция синхронная
-    Database.migrate_db()
+    await set_bot_commands(tg_bot)
 
-    # Удаляем вебхуки (очистка очереди старых апдейтов)
-    await telegram_bot.delete_webhook(drop_pending_updates=True)
-
-    # Запускаем поллинг (бесконечный цикл прослушивания)
-    logger.info("Bot is ready and listening!")
-    await dp.start_polling(telegram_bot)
+    print("🚀 Запускаем бота...")
+    try:
+        await tg_bot.delete_webhook(drop_pending_updates=True)
+        await dp.start_polling(tg_bot)
+    except Exception as e:
+        print(f"❌ ОШИБКА ЗАПУСКА: {e}")
+    finally:
+        await tg_bot.session.close()
 
 if __name__ == "__main__":
-    # Настройка для Windows (обязательно для aiogram 3+ на винде)
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
-    try:
-        asyncio.run(main())
-    except (KeyboardInterrupt, SystemExit):
-        logger.warning("Bot stopped manually!")
-    except Exception as e:
-        logger.critical(f"Bot crashed with error: {e}")
+    asyncio.run(main())
