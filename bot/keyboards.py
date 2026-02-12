@@ -1,12 +1,211 @@
 import math
-from aiogram.utils.keyboard import InlineKeyboardBuilder, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.texts import T
-from bot.config import SUPPORT_LINK, CHANNEL_LINK, GENRES_LIST
+from bot.config import CHANNEL_LINK, GENRES_LIST
 from bot.utils import format_title, split_playlist_name
 from bot.database import Database
 
-# --- ВЫБОР ЯЗЫКА (6 ЯЗЫКОВ) ---
-def kb_lang():
+# --- ГЛАВНОЕ МЕНЮ (ASYNC) ---
+async def kb_menu(uid):
+    kb = InlineKeyboardBuilder()
+    # Получаем статус юзера асинхронно
+    user = await Database.get_user(uid)
+    
+    kb.button(text=T(uid, 'btn_search_live'), switch_inline_query_current_chat="")
+    kb.button(text=T(uid, 'btn_links_media'), callback_data="help:media")
+    kb.button(text=T(uid, 'btn_top_chart'), callback_data="view:top")
+    
+    kb.button(text=T(uid, 'btn_playlists'), callback_data="open:playlists")
+    
+    # Проверка статуса
+    status = user.get("status") if user else "guest"
+    if status in ["user", "premium", "admin"]:
+        kb.button(text=T(uid, 'btn_profile'), callback_data="my:profile")
+    else:
+        kb.button(text=T(uid, 'btn_reg'), callback_data="auth:reg")
+    
+    kb.button(text=T(uid, 'btn_settings'), callback_data="settings")
+    kb.button(text=T(uid, 'btn_support'), callback_data="open:ticket")
+    
+    kb.adjust(1, 2, 2, 2) 
+    return kb.as_markup()
+
+# --- ТРЕК (ASYNC) ---
+async def kb_track(uid, vid, from_playlist=None, is_liked=False):
+    kb = InlineKeyboardBuilder()
+    
+    if from_playlist != "Favorites":
+        kb.button(text="💔" if is_liked else "❤️", callback_data=f"{'unfav' if is_liked else 'fav'}:{vid}")
+    
+    kb.button(text=T(uid, 'add_to_pl'), callback_data=f"addpl:{vid}")
+    kb.button(text=T(uid, 'btn_lyrics_short'), callback_data=f"lyrics:{vid}")
+    
+    user = await Database.get_user(uid)
+    status = user.get("status") if user else "guest"
+    
+    if status in ["user", "premium", "admin"]:
+        if from_playlist:
+            kb.button(text=T(uid, 'btn_remove_track'), callback_data=f"rmtr:{from_playlist}:{vid}")
+            kb.button(text=T(uid, 'btn_move_track'), callback_data=f"movetr:ask:{vid}:{from_playlist}")
+            kb.adjust(1, 2) if from_playlist == "Favorites" else kb.adjust(2, 2)
+        else:
+            kb.adjust(2, 1)
+    else:
+        kb.adjust(2, 1)
+        
+    kb.row(InlineKeyboardButton(text=T(uid, 'btn_search_more'), switch_inline_query_current_chat=""),
+           InlineKeyboardButton(text=T(uid, 'btn_to_menu'), callback_data="back:to:main"))
+    return kb.as_markup()
+
+# --- ПЛЕЙЛИСТЫ (ASYNC) ---
+async def kb_all_playlists(uid):
+    user = await Database.get_user(uid)
+    kb = InlineKeyboardBuilder()
+    kb.button(text=T(uid, 'pl_create'), callback_data="create:playlist")
+    
+    if user and user.get("playlists"):
+        for pl_name in user["playlists"]:
+            if pl_name == "Favorites":
+                label = T(uid, 'btn_fav_icon')
+            else:
+                icon, clean_name = split_playlist_name(pl_name)
+                label = f"{icon} {clean_name}" if icon else f"📂 {clean_name}"
+            kb.button(text=label, callback_data=f"viewpl:{pl_name}:0")
+    
+    kb.adjust(1)
+    kb.row(InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data="back:to:main"))
+    return kb.as_markup()
+
+async def kb_playlist_view(uid, tracks, page=0, pl_name="Favorites"):
+    kb = InlineKeyboardBuilder()
+    if tracks:
+        total = math.ceil(len(tracks) / 5)
+        start, end = page * 5, (page + 1) * 5
+        
+        # Тут цикл, делаем запросы к БД
+        for vid in tracks[start:end]:
+            info = await Database.get_track(vid)
+            if info:
+                title = format_title(info.get('title'), info.get('artist'))
+                if len(title) > 35: title = title[:32] + "..."
+                kb.button(text=f"🎵 {title}", callback_data=f"dl:{vid}:{pl_name}")
+        
+        kb.adjust(1)
+        row = []
+        if page > 0: row.append(InlineKeyboardButton(text="⬅️", callback_data=f"viewpl:{pl_name}:{page-1}"))
+        row.append(InlineKeyboardButton(text=f"📄 {page+1}/{total}", callback_data="ignore"))
+        if page < total - 1: row.append(InlineKeyboardButton(text="➡️", callback_data=f"viewpl:{pl_name}:{page+1}"))
+        kb.row(*row)
+
+    if pl_name != "Favorites":
+        kb.row(
+            InlineKeyboardButton(text=T(uid, 'btn_pl_add_track'), callback_data=f"addtr:menu:{pl_name}"),
+            InlineKeyboardButton(text=T(uid, 'btn_pl_opts'), callback_data=f"pl:opts:{pl_name}")
+        )
+    kb.row(InlineKeyboardButton(text=T(uid, 'btn_playlists'), callback_data="open:playlists"))
+    kb.row(InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data="back:to:main"))
+    return kb.as_markup()
+
+async def kb_select_from_fav(uid, target_pl, page=0):
+    user = await Database.get_user(uid)
+    tracks = user.get("playlists", {}).get("Favorites", [])
+    if not tracks: return None
+    
+    total = math.ceil(len(tracks) / 5)
+    start, end = page * 5, (page + 1) * 5
+    kb = InlineKeyboardBuilder()
+    
+    for vid in tracks[start:end]:
+        info = await Database.get_track(vid)
+        if info:
+            title = format_title(info.get('title'), info.get('artist'))
+            if len(title) > 35: title = title[:37] + "..."
+            kb.button(text=f"➕ {title}", callback_data=f"addtr:save:{vid}:{target_pl}")
+            
+    kb.adjust(1)
+    row = []
+    if page > 0: row.append(InlineKeyboardButton(text="⬅️", callback_data=f"addtr:fav:{target_pl}:{page-1}"))
+    row.append(InlineKeyboardButton(text=f"📄 {page+1}/{total}", callback_data="ignore"))
+    if page < total - 1: row.append(InlineKeyboardButton(text="➡️", callback_data=f"addtr:fav:{target_pl}:{page+1}"))
+    kb.row(*row)
+    kb.row(InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data=f"addtr:menu:{target_pl}"))
+    return kb.as_markup()
+
+async def kb_move_target(uid, vid, from_pl):
+    user = await Database.get_user(uid)
+    kb = InlineKeyboardBuilder()
+    if user and user.get("playlists"):
+        for pl_name in user["playlists"]:
+            if pl_name == from_pl: continue 
+            if pl_name == "Favorites":
+                label = T(uid, 'btn_fav_icon')
+            else:
+                icon, clean_name = split_playlist_name(pl_name)
+                label = f"{icon} {clean_name}" if icon else f"📂 {clean_name}"
+            kb.button(text=label, callback_data=f"domove:{vid}:{from_pl}:{pl_name}")
+    kb.button(text=T(uid, 'btn_close'), callback_data="delete:message")
+    kb.adjust(1)
+    return kb.as_markup()
+
+# --- ЛЕГКИЕ КЛАВИАТУРЫ (SYNC - не требуют await) ---
+# Они используют T(), который теперь берет данные из RAM
+
+def kb_top_chart(uid, tracks):
+    kb = InlineKeyboardBuilder()
+    for track in tracks:
+        title = format_title(track.get('title'), track.get('artist'))
+        if len(title) > 30: title = title[:27] + "..."
+        kb.button(text=f"🔥 {title}", callback_data=f"dl:{track['id']}")
+    kb.adjust(1)
+    kb.row(InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data="back:to:main"))
+    return kb.as_markup()
+
+def kb_admin_panel():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="📊 Статистика", callback_data="admin:stats")
+    kb.button(text="📢 Рассылка", callback_data="admin:broadcast")
+    kb.button(text="👤 Управление юзерами", callback_data="admin:users")
+    kb.button(text="🔥 Топ запросов", callback_data="admin:top_queries")
+    kb.button(text="❌ Закрыть", callback_data="delete:message")
+    kb.adjust(2, 2, 1)
+    return kb.as_markup()
+
+def kb_admin_user_manage(user_id, is_banned, is_premium):
+    kb = InlineKeyboardBuilder()
+    ban_text = "🟢 Разбанить" if is_banned else "🔴 Забанить"
+    ban_data = f"adm:unban:{user_id}" if is_banned else f"adm:ban:{user_id}"
+    prem_text = "⬇️ Снять Premium" if is_premium else "⭐️ Дать Premium"
+    prem_data = f"adm:unprem:{user_id}" if is_premium else f"adm:prem:{user_id}"
+    kb.button(text=ban_text, callback_data=ban_data)
+    kb.button(text=prem_text, callback_data=prem_data)
+    kb.button(text="🔙 Назад", callback_data="admin:users")
+    kb.adjust(1)
+    return kb.as_markup()
+
+def kb_admin_back():
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="🔙 Назад", callback_data="admin:main")]])
+
+def kb_broadcast_actions():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="➕ Добавить кнопку", callback_data="broadcast:add_btn")
+    kb.button(text="🚀 Отправить", callback_data="broadcast:confirm")
+    kb.button(text="❌ Отмена", callback_data="broadcast:cancel")
+    kb.adjust(1)
+    return kb.as_markup()
+
+def kb_profile(uid):
+    kb = InlineKeyboardBuilder()
+    kb.button(text=T(uid, 'btn_history'), callback_data="my:history")
+    kb.button(text=T(uid, 'btn_playlists'), callback_data="open:playlists")
+    kb.button(text=T(uid, 'btn_back'), callback_data="back:to:main")
+    kb.adjust(1)
+    return kb.as_markup()
+
+def kb_history_back(uid):
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data="my:profile")]])
+
+def kb_lang(uid=None): 
     kb = InlineKeyboardBuilder()
     kb.button(text="🇷🇺 Русский", callback_data="set:lang:ru")
     kb.button(text="🇬🇧 English", callback_data="set:lang:en")
@@ -15,26 +214,20 @@ def kb_lang():
     kb.button(text="🇺🇿 O'zbek tili", callback_data="set:lang:uz")
     kb.button(text="🇦🇪 العربية", callback_data="set:lang:ar")
     kb.adjust(2)
+    if uid: kb.row(InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data="settings"))
     return kb.as_markup()
 
-# --- ГЛАВНОЕ МЕНЮ ---
-def kb_menu(uid):
+def kb_settings(uid):
     kb = InlineKeyboardBuilder()
-    user = Database.get_user(uid)
-    kb.button(text=T(uid, 'btn_search_main'), callback_data="nav:search")
-    kb.button(text=T(uid, 'btn_fav_icon'), callback_data="viewpl:Favorites:0") 
-    kb.button(text=T(uid, 'btn_open_pl'), callback_data="open:playlists")
-    
-    if user and user.get("status") == "user":
-        kb.button(text=T(uid, 'btn_profile_short'), callback_data="my:profile")
-    else:
-        kb.button(text=T(uid, 'btn_reg'), callback_data="auth:reg")
-    
-    kb.button(text=T(uid, 'btn_set'), callback_data="settings")
-    kb.adjust(1, 2, 2) 
+    kb.button(text=T(uid, 'btn_lang'), callback_data="change:lang:menu")
+    kb.button(text=T(uid, 'btn_del_acc'), callback_data="del:acc:ask")
+    kb.button(text=T(uid, 'btn_back'), callback_data="back:to:main")
+    kb.adjust(1)
     return kb.as_markup()
 
-# --- АВТОРИЗАЦИЯ И РЕГИСТРАЦИЯ ---
+def kb_back_to_main(uid):
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data="back:to:main")]])
+
 def kb_auth(uid):
     kb = InlineKeyboardBuilder()
     kb.button(text=T(uid, 'btn_reg'), callback_data="auth:reg")
@@ -58,72 +251,12 @@ def kb_genres(uid, selected_genres):
     kb.row(InlineKeyboardButton(text=T(uid, 'btn_confirm'), callback_data="genre:done"))
     return kb.as_markup()
 
-# --- ПОИСК ---
 def kb_search(uid, results, page=0):
-    if not results: return None
-    total = math.ceil(len(results) / 5)
-    start, end = page * 5, (page + 1) * 5
-    kb = InlineKeyboardBuilder()
-    for res in results[start:end]:
-        title = format_title(res.get('title'), res.get('uploader'))
-        if len(title) > 40: title = title[:37] + "..."
-        kb.button(text=f"🎵 {title}", callback_data=f"dl:{res['id']}")
-    kb.adjust(1)
-    row = []
-    if page > 0: row.append(InlineKeyboardButton(text="⬅️", callback_data=f"page:{page-1}"))
-    row.append(InlineKeyboardButton(text=f"📄 {page+1}/{total}", callback_data="ignore"))
-    if page < total - 1: row.append(InlineKeyboardButton(text="➡️", callback_data=f"page:{page+1}"))
-    kb.row(*row)
-    kb.row(InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data="delete:search"))
-    return kb.as_markup()
+    return kb_back_to_main(uid)
 
 def kb_cancel_search(uid):
     kb = InlineKeyboardBuilder()
     kb.button(text=T(uid, 'btn_cancel_search'), callback_data="back:to:main")
-    return kb.as_markup()
-
-# --- ПЛЕЙЛИСТЫ ---
-def kb_all_playlists(uid):
-    user = Database.get_user(uid)
-    kb = InlineKeyboardBuilder()
-    kb.button(text=T(uid, 'pl_create'), callback_data="create:playlist")
-    if user and user.get("playlists"):
-        for pl_name in user["playlists"]:
-            if pl_name == "Favorites":
-                label = T(uid, 'btn_fav_icon')
-            else:
-                icon, clean_name = split_playlist_name(pl_name)
-                label = f"{icon} {clean_name}" if icon else f"📂 {clean_name}"
-            kb.button(text=label, callback_data=f"viewpl:{pl_name}:0")
-    kb.adjust(1)
-    kb.row(InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data="back:to:main"))
-    return kb.as_markup()
-
-def kb_playlist_view(uid, tracks, page=0, pl_name="Favorites"):
-    kb = InlineKeyboardBuilder()
-    if tracks:
-        total = math.ceil(len(tracks) / 5)
-        start, end = page * 5, (page + 1) * 5
-        for vid in tracks[start:end]:
-            info = Database.get_track(vid)
-            if info:
-                title = format_title(info.get('title'), info.get('artist'))
-                if len(title) > 35: title = title[:32] + "..."
-                kb.button(text=f"🎵 {title}", callback_data=f"dl:{vid}:{pl_name}")
-        kb.adjust(1)
-        row = []
-        if page > 0: row.append(InlineKeyboardButton(text="⬅️", callback_data=f"viewpl:{pl_name}:{page-1}"))
-        row.append(InlineKeyboardButton(text=f"📄 {page+1}/{total}", callback_data="ignore"))
-        if page < total - 1: row.append(InlineKeyboardButton(text="➡️", callback_data=f"viewpl:{pl_name}:{page+1}"))
-        kb.row(*row)
-
-    if pl_name != "Favorites":
-        kb.row(
-            InlineKeyboardButton(text=T(uid, 'btn_pl_add_track'), callback_data=f"addtr:menu:{pl_name}"),
-            InlineKeyboardButton(text=T(uid, 'btn_pl_opts'), callback_data=f"pl:opts:{pl_name}")
-        )
-    kb.row(InlineKeyboardButton(text=T(uid, 'btn_open_pl'), callback_data="open:playlists"))
-    kb.row(InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data="back:to:main"))
     return kb.as_markup()
 
 def kb_playlist_options(uid, pl_name):
@@ -140,63 +273,16 @@ def kb_cancel_create(uid):
     kb.button(text=T(uid, 'btn_cancel_search'), callback_data="open:playlists")
     return kb.as_markup()
 
-def kb_back_to_pl_view(uid, pl_name):
+def kb_select_playlist(uid, vid):
     kb = InlineKeyboardBuilder()
-    kb.button(text=T(uid, 'btn_back_to_pl'), callback_data=f"viewpl:{pl_name}:0")
-    return kb.as_markup()
-
-def kb_back_to_pl(uid, pl_name):
-    kb = InlineKeyboardBuilder()
-    kb.button(text=T(uid, 'btn_back'), callback_data=f"viewpl:{pl_name}:0")
-    return kb.as_markup()
-
-# --- УПРАВЛЕНИЕ ТРЕКОМ ---
-def kb_track(uid, vid, from_playlist=None, is_liked=False):
-    kb = InlineKeyboardBuilder()
-    if from_playlist != "Favorites":
-        kb.button(text="💔" if is_liked else "❤️", callback_data=f"{'unfav' if is_liked else 'fav'}:{vid}")
-    kb.button(text=T(uid, 'btn_lyrics_short'), callback_data=f"lyrics:{vid}")
-    
-    user = Database.get_user(uid)
-    if user and user.get("status") == "user":
-        if from_playlist:
-            kb.button(text=T(uid, 'btn_remove_track'), callback_data=f"rmtr:{from_playlist}:{vid}")
-            kb.button(text=T(uid, 'btn_move_track'), callback_data=f"movetr:ask:{vid}:{from_playlist}")
-            kb.adjust(1, 2) if from_playlist == "Favorites" else kb.adjust(2, 2)
-        else:
-            kb.button(text=T(uid, 'add_to_pl'), callback_data=f"addpl:{vid}")
-            kb.adjust(2, 1)
-    else:
-        kb.adjust(2)
-    return kb.as_markup()
-
-# --- ПРОФИЛЬ И НАСТРОЙКИ ---
-def kb_profile(uid):
-    kb = InlineKeyboardBuilder()
-    kb.button(text=T(uid, 'btn_open_pl'), callback_data="open:playlists")
-    kb.button(text=T(uid, 'btn_back'), callback_data="back:to:main")
+    kb.button(text=T(uid, 'btn_fav_icon'), callback_data=f"savepl:{vid}:Favorites")
+    kb.button(text=T(uid, 'pl_create'), callback_data="create:playlist")
+    kb.button(text=T(uid, 'btn_close'), callback_data="close_msg")
     kb.adjust(1)
     return kb.as_markup()
 
-def kb_settings(uid):
-    kb = InlineKeyboardBuilder()
-    kb.button(text=T(uid, 'btn_lang'), callback_data="change:lang:menu")
-    kb.button(text=T(uid, 'btn_support'), callback_data="open:ticket") 
-    kb.button(text=T(uid, 'btn_channel'), url=CHANNEL_LINK)
-    kb.button(text=T(uid, 'btn_back'), callback_data="back:to:main")
-    kb.adjust(1, 2, 1)
-    return kb.as_markup()
-
-# --- ВСПОМОГАТЕЛЬНЫЕ ---
 def kb_close(uid):
-    kb = InlineKeyboardBuilder()
-    kb.button(text=T(uid, 'btn_close'), callback_data="delete:message")
-    return kb.as_markup()
-
-def kb_ok(uid):
-    kb = InlineKeyboardBuilder()
-    kb.button(text=T(uid, 'btn_ok'), callback_data="delete:message")
-    return kb.as_markup()
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=T(uid, 'btn_close'), callback_data="delete:message")]])
 
 def kb_error_report(uid):
     kb = InlineKeyboardBuilder()
@@ -206,9 +292,7 @@ def kb_error_report(uid):
     return kb.as_markup()
 
 def kb_cancel_ticket(uid):
-    kb = InlineKeyboardBuilder()
-    kb.button(text=T(uid, 'btn_cancel_ticket'), callback_data="ticket:cancel")
-    return kb.as_markup()
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=T(uid, 'btn_cancel_ticket'), callback_data="ticket:cancel")]])
 
 def kb_del_confirm(uid):
     kb = InlineKeyboardBuilder()
@@ -221,23 +305,6 @@ def kb_restore(uid):
     kb = InlineKeyboardBuilder()
     kb.button(text=T(uid, 'btn_restore'), callback_data="restore:acc")
     kb.button(text=T(uid, 'btn_guest'), callback_data="confirm:guest")
-    kb.adjust(1)
-    return kb.as_markup()
-
-# --- ПЛЕЙЛИСТЫ (ВЫБОР, ИКОНКИ, ПЕРЕМЕЩЕНИЕ) ---
-def kb_select_playlist(uid, vid):
-    user = Database.get_user(uid)
-    kb = InlineKeyboardBuilder()
-    if user and user.get("playlists"):
-        for pl_name in user["playlists"]:
-            if pl_name == "Favorites":
-                label = T(uid, 'btn_fav_icon')
-            else:
-                icon, clean_name = split_playlist_name(pl_name)
-                label = f"{icon} {clean_name}" if icon else f"📂 {clean_name}"
-            kb.button(text=label, callback_data=f"savepl:{vid}:{pl_name}")
-    kb.button(text=T(uid, 'pl_create'), callback_data="create:playlist")
-    kb.button(text=T(uid, 'btn_close'), callback_data="delete:message")
     kb.adjust(1)
     return kb.as_markup()
 
@@ -257,22 +324,6 @@ def kb_pl_delete_confirm(uid, pl_name):
     kb.adjust(1)
     return kb.as_markup()
 
-def kb_move_target(uid, vid, from_pl):
-    user = Database.get_user(uid)
-    kb = InlineKeyboardBuilder()
-    if user and user.get("playlists"):
-        for pl_name in user["playlists"]:
-            if pl_name == from_pl: continue 
-            if pl_name == "Favorites":
-                label = T(uid, 'btn_fav_icon')
-            else:
-                icon, clean_name = split_playlist_name(pl_name)
-                label = f"{icon} {clean_name}" if icon else f"📂 {clean_name}"
-            kb.button(text=label, callback_data=f"domove:{vid}:{from_pl}:{pl_name}")
-    kb.button(text=T(uid, 'btn_close'), callback_data="delete:message")
-    kb.adjust(1)
-    return kb.as_markup()
-
 def kb_add_track_choice(uid, pl_name):
     kb = InlineKeyboardBuilder()
     kb.button(text=T(uid, 'btn_from_fav'), callback_data=f"addtr:fav:{pl_name}")
@@ -281,24 +332,16 @@ def kb_add_track_choice(uid, pl_name):
     kb.adjust(1)
     return kb.as_markup()
 
-def kb_select_from_fav(uid, target_pl, page=0):
-    user = Database.get_user(uid)
-    tracks = user.get("playlists", {}).get("Favorites", [])
-    if not tracks: return None
-    total = math.ceil(len(tracks) / 5)
-    start, end = page * 5, (page + 1) * 5
-    kb = InlineKeyboardBuilder()
-    for vid in tracks[start:end]:
-        info = Database.get_track(vid)
-        if info:
-            title = format_title(info.get('title'), info.get('artist'))
-            if len(title) > 40: title = title[:37] + "..."
-            kb.button(text=f"➕ {title}", callback_data=f"addtr:save:{vid}:{target_pl}")
-    kb.adjust(1)
-    row = []
-    if page > 0: row.append(InlineKeyboardButton(text="⬅️", callback_data=f"addtr:fav:{target_pl}:{page-1}"))
-    row.append(InlineKeyboardButton(text=f"📄 {page+1}/{total}", callback_data="ignore"))
-    if page < total - 1: row.append(InlineKeyboardButton(text="➡️", callback_data=f"addtr:fav:{target_pl}:{page+1}"))
-    kb.row(*row)
-    kb.row(InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data=f"addtr:menu:{target_pl}"))
-    return kb.as_markup()
+def kb_broadcast_confirm():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Отправить", callback_data="broadcast:send"),
+            InlineKeyboardButton(text="❌ Отмена", callback_data="broadcast:cancel")
+        ]
+    ])
+
+def kb_back_to_pl_view(uid, pl_name):
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data=f"viewpl:{pl_name}:0")]])
+
+def kb_back_to_pl(uid, pl_name):
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text=T(uid, 'btn_back'), callback_data=f"viewpl:{pl_name}:0")]])

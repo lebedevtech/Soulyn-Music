@@ -2,11 +2,8 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
-from bot.config import BOT_TOKEN, LOG_FILE
-
-# 👇 ИСПРАВЛЕНИЕ: Импортируем DefaultBotProperties оттуда же, откуда и Bot
-# Это работает на всех версиях 3.7+
 from aiogram.client.bot import DefaultBotProperties 
+from bot.config import BOT_TOKEN, LOG_FILE
 
 # Настройка логирования
 logging.basicConfig(
@@ -23,14 +20,19 @@ logger = logging.getLogger("MusicGenie")
 storage = MemoryStorage()
 
 # Инициализация бота
-# Используем новый синтаксис
 bot = Bot(
     token=BOT_TOKEN,
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
 dp = Dispatcher(storage=storage)
 
-# Временная память (RAM)
+# --- ОПТИМИЗАЦИЯ: Временная память (RAM) ---
+# user_settings: {user_id: {'lang': 'ru', 'status': 'user', ...}}
+# Загружается при старте из БД, чтобы не дёргать базу ради простых проверок (язык, лимиты)
 user_settings = {}
+
+# search_cache: Кэш результатов поиска YouTube/iTunes
 search_cache = {}
+
+# error_cache: Лог последних ошибок юзеров
 error_cache = {}

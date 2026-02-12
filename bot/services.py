@@ -6,11 +6,14 @@ import time
 import requests
 import lyricsgenius
 from concurrent.futures import ThreadPoolExecutor
+from shazamio import Shazam
 from bot.config import PROXY_URL, COOKIES_PATH, USER_AGENT, GENIUS_TOKEN, BIN_DIR
 from bot.loader import logger
 from bot.utils import format_title, MusicSearcher, clean_string
 
-# FFmpeg
+# --- INIT ---
+shazam = Shazam()
+
 ffmpeg_location = None
 if os.path.exists(os.path.join(BIN_DIR, 'ffmpeg.exe')):
     ffmpeg_location = BIN_DIR
@@ -28,6 +31,7 @@ def get_ydl_opts():
         'ffmpeg_location': ffmpeg_location,
         'concurrent_fragment_downloads': 5,
         'force_ipv4': True,
+        'writethumbnail': True, 
         'buffersize': 1024 * 1024,
         'socket_timeout': 10,
         'match_filter': yt_dlp.utils.match_filter_func("duration < 1200"),
@@ -43,74 +47,141 @@ def get_ydl_opts():
 
 executor = ThreadPoolExecutor(max_workers=10)
 
-# --- GENIUS ---
 try:
     genius = lyricsgenius.Genius(GENIUS_TOKEN, skip_non_songs=True, remove_section_headers=False, verbose=False)
-except:
-    genius = None
+except: genius = None
+
+# --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 
 async def get_lyrics(artist, title):
     if not genius: return None
     clean_t = title.lower().replace(artist.lower(), "").strip()
     clean_t = clean_string(clean_t)
+    loop = asyncio.get_event_loop()
     try:
-        loop = asyncio.get_event_loop()
         song = await loop.run_in_executor(None, lambda: genius.search_song(clean_t, artist))
+        if not song:
+            song = await loop.run_in_executor(None, lambda: genius.search_song(title))
+            if song and artist.lower() not in song.artist.lower(): song = None
         return song.lyrics if song else None
     except: return None
 
+# Синхронная версия для использования внутри потоков yt-dlp
+def sync_search_itunes(query, limit=1):
+    try:
+        url = "https://itunes.apple.com/search"
+        params = {"term": query, "media": "music", "entity": "song", "limit": limit}
+        resp = requests.get(url, params=params, timeout=5)
+        data = resp.json()
+        if data.get("resultCount", 0) > 0:
+            track = data["results"][0]
+            return {
+                "artist": track["artistName"],
+                "title": track["trackName"],
+                "meta": {
+                    "album": track["collectionName"],
+                    "year": track.get("releaseDate", "")[:4],
+                    "genre": track.get("primaryGenreName", "Music"),
+                    "cover": track.get("artworkUrl100", "").replace("100x100bb", "600x600bb")
+                }
+            }
+    except: pass
+    return None
+
 # --- ПОИСК ---
+
 async def search_yt(query: str):
-    loop = asyncio.get_event_loop()
-    music_results = await loop.run_in_executor(None, lambda: MusicSearcher.search_integrated(query))
-    if music_results:
-        clean_results = []
-        for item in music_results:
-            clean_results.append({
-                'id': f"{item['source']}:{item['id']}", 
-                'title': item['display'],
-                'uploader': item['source'].capitalize(), 
-                'meta_pkg': item 
-            })
-        return clean_results
+    query = query.strip()
+    if "open.spotify.com" in query:
+        track_name = await resolve_spotify_link(query)
+        if track_name: query = track_name
+        else: return [] 
+    if "youtube.com" in query or "youtu.be" in query:
+        return await _resolve_youtube_link(query)
+
+    # 🔥 ИСПРАВЛЕНИЕ: Вызываем async метод напрямую, без executor
+    try:
+        music_results = await MusicSearcher.search_integrated(query)
+        if music_results:
+            clean_results = []
+            for item in music_results:
+                clean_results.append({
+                    'id': f"{item['source']}:{item['id']}", 
+                    'title': item['display'],
+                    'uploader': item['source'].capitalize(), 
+                    'meta_pkg': item 
+                })
+            return clean_results
+    except Exception as e:
+        logger.error(f"Search Error: {e}")
+    
+    # Если там нет - ищем на YouTube
     return await _fallback_search(query)
+
+async def recognize_media(file_path):
+    try:
+        out = await shazam.recognize(file_path)
+        if 'track' in out:
+            track = out['track']
+            title = track.get('title')
+            subtitle = track.get('subtitle')
+            if title and subtitle: return f"{subtitle} - {title}"
+    except: pass
+    return None
+
+async def resolve_spotify_link(url):
+    def parse_page():
+        try:
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(response.content, 'html.parser')
+                page_title = soup.title.string
+                return page_title.replace(" | Spotify", "").replace(" - song and lyrics by", " -").replace(" - song by", " -")
+        except: pass
+        return None
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, parse_page)
+
+async def _resolve_youtube_link(url):
+    def get_info():
+        opts = get_ydl_opts()
+        opts['extract_flat'] = True
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            return ydl.extract_info(url, download=False)
+    loop = asyncio.get_event_loop()
+    try:
+        info = await loop.run_in_executor(executor, get_info)
+        if not info: return []
+        if 'entries' not in info:
+            clean_t = format_title(info.get('title'), info.get('uploader', ''))
+            return [{'id': info.get('id'), 'title': clean_t, 'uploader': 'YouTube', 'meta_pkg': None}]
+        else: return [] 
+    except: return []
 
 async def _fallback_search(query):
     def run_search():
         opts = get_ydl_opts()
         opts['extract_flat'] = True
         with yt_dlp.YoutubeDL(opts) as ydl:
-            # Запрашиваем 100, чтобы иметь запас для фильтрации дублей
-            return ydl.extract_info(f"ytsearch100:{query}", download=False)
-
+            return ydl.extract_info(f"ytsearch20:{query}", download=False)
     loop = asyncio.get_event_loop()
     try:
         data = await loop.run_in_executor(executor, run_search)
         if not data or 'entries' not in data: return []
-        
         clean_results = []
         seen = set()
         for entry in data['entries']:
             if not entry: continue
             title = entry.get('title', '')
             if len(title) < 2 or entry.get('duration', 0) > 1200: continue
-
             clean_t = format_title(title, entry.get('uploader', ''))
-            
-            # Уникальный ключ для фильтрации YouTube дублей
             norm_t = re.sub(r'\s+', '', clean_t.lower())
-            
             if norm_t not in seen:
                 seen.add(norm_t)
-                clean_results.append({
-                    'id': entry.get('id'),
-                    'title': clean_t,
-                    'uploader': 'YouTube'
-                })
-                # Останавливаемся ровно на 50 уникальных треках
-                if len(clean_results) >= 50:
-                    break
-                    
+                clean_results.append({'id': entry.get('id'), 'title': clean_t, 'uploader': 'YouTube', 'meta_pkg': None})
+                if len(clean_results) >= 20: break
         return clean_results
     except: return []
 
@@ -124,8 +195,7 @@ async def resolve_meta_to_youtube(artist, title):
     loop = asyncio.get_event_loop()
     try:
         data = await loop.run_in_executor(executor, run_resolve)
-        if data and data['entries']:
-            return data['entries'][0]['id']
+        if data and data['entries']: return data['entries'][0]['id']
     except: pass
     return None
 
@@ -140,42 +210,97 @@ async def download_yt(vid, meta_pkg=None):
     def run_download():
         dl_opts = get_ydl_opts()
         dl_opts['postprocessors'] = [
+            {'key': 'FFmpegThumbnailsConvertor', 'format': 'jpg'},
             {'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'},
             {'key': 'EmbedThumbnail'},
             {'key': 'FFmpegMetadata', 'add_metadata': True}
         ]
+        
         info = None
         current_filename = None
         try:
             with yt_dlp.YoutubeDL(dl_opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 current_filename = ydl.prepare_filename(info)
-        except Exception:
+        except:
             time.sleep(1.5)
-            dl_opts['outtmpl'] = 'downloads/%(id)s_retry_%(epoch)s.%(ext)s'
-            with yt_dlp.YoutubeDL(dl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
-                current_filename = ydl.prepare_filename(info)
+            try:
+                dl_opts['outtmpl'] = 'downloads/%(id)s_retry.%(ext)s'
+                with yt_dlp.YoutubeDL(dl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    current_filename = ydl.prepare_filename(info)
+            except: pass
 
         if not info: raise Exception("Extraction failed")
-        final_filename = current_filename.rsplit('.', 1)[0] + '.mp3'
         
-        title = meta_pkg['title'] if meta_pkg else info.get('title')
-        artist = meta_pkg['artist'] if meta_pkg else info.get('uploader')
+        base_name = current_filename.rsplit('.', 1)[0]
+        final_filename = base_name + '.mp3'
         
-        thumb_path = None
-        if meta_pkg and meta_pkg['meta'].get('cover'):
+        # --- ФОРМИРОВАНИЕ МЕТАДАННЫХ ---
+        
+        final_meta = {}
+        final_title = "Unknown"
+        final_artist = "Unknown"
+        
+        if meta_pkg:
+            final_title = meta_pkg['title']
+            final_artist = meta_pkg['artist']
+            final_meta = meta_pkg['meta']
+        else:
+            raw_title = info.get('title', '')
+            uploader = info.get('uploader', '')
+            
+            if info.get('artist') and info.get('track'):
+                yt_artist = info.get('artist')
+                yt_title = info.get('track')
+            else:
+                full_clean = format_title(raw_title, uploader)
+                if " - " in full_clean: yt_artist, yt_title = full_clean.split(" - ", 1)
+                else: yt_artist = uploader; yt_title = full_clean
+            
+            # 🔥 ИСПРАВЛЕНИЕ: Используем синхронный поиск внутри потока
+            enriched = None
             try:
-                thumb_path = f"{info['id']}.jpg"
-                with open(thumb_path, 'wb') as f: f.write(requests.get(meta_pkg['meta']['cover']).content)
+                search_q = f"{yt_artist} {yt_title}"
+                enriched = sync_search_itunes(search_q, limit=1)
             except: pass
-        
+            
+            if enriched:
+                final_artist = enriched['artist']
+                final_title = enriched['title']
+                final_meta = enriched['meta']
+            else:
+                final_artist = yt_artist
+                final_title = yt_title
+                final_meta = {
+                    'album': info.get('album'),
+                    'genre': info.get('genre'),
+                    'year': str(info.get('release_year') or '') if info.get('release_year') else None,
+                    'cover': None 
+                }
+
+        thumb_path = None
+        if final_meta.get('cover'):
+            try:
+                temp_thumb = f"downloads/{info['id']}_cover.jpg"
+                resp = requests.get(final_meta['cover'], timeout=5)
+                if resp.status_code == 200:
+                    with open(temp_thumb, 'wb') as f: f.write(resp.content)
+                    thumb_path = temp_thumb
+            except: pass
+
+        if not thumb_path:
+            candidates = [base_name + ".jpg", base_name + ".webp", f"downloads/{info['id']}.jpg"]
+            for c in candidates:
+                if os.path.exists(c): thumb_path = c; break
+
         return {
             'path': final_filename,
-            'title': title,
-            'artist': artist,
-            'thumb_path': thumb_path,
-            'meta': meta_pkg['meta'] if meta_pkg else {}
+            'title': final_title,
+            'artist': final_artist,
+            'thumb_path': thumb_path, 
+            'meta': final_meta
         }
+
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(executor, run_download)
