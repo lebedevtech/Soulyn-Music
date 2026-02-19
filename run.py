@@ -2,11 +2,15 @@ import asyncio
 import logging
 import sys
 import os
+import warnings
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 from aiogram.types import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
 from bot.config import ADMIN_ID
 from bot.database import Database
 
-# 1. НАСТРОЙКА ПУТЕЙ И OKРУЖЕНИЯ
+# 1. НАСТРОЙКА ПУТЕЙ
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BIN_DIR = os.path.join(BASE_DIR, "bin")
 if os.path.exists(BIN_DIR):
@@ -17,6 +21,7 @@ if not os.path.exists("downloads"): os.makedirs("downloads")
 if not os.path.exists("data"): os.makedirs("data")
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+logger = logging.getLogger("MusicGenie")
 
 async def set_bot_commands(bot):
     user_commands = [
@@ -28,38 +33,43 @@ async def set_bot_commands(bot):
 
     admin_commands = user_commands + [
         BotCommand(command="admin", description="👑 Админ-панель"),
-        BotCommand(command="broadcast", description="📢 Рассылка"),
     ]
     try:
         await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=ADMIN_ID))
     except: pass
 
 async def main():
-    print("⏳ Импортируем библиотеки...")
+    logger.info("🚀 Starting Soulyn Music Bot...")
     try:
         from bot.loader import bot as tg_bot, dp
         import bot.handlers  
         
-        # 🔥 Инициализируем БД
-        print("🗄 Подключаем базу данных...")
+        logger.info("Initializing database...")
         await Database.init_db()
-        print("✅ Библиотеки успешно загружены!")
-    except Exception as e:
-        print(f"\n❌ ОШИБКА: {e}")
-        raise e
-
-    await set_bot_commands(tg_bot)
-
-    print("🚀 Запускаем бота...")
-    try:
+        
+        # 🔥 FIX: Загружаем user_settings в RAM кэш
+        logger.info("Loading user settings into RAM cache...")
+        await Database.load_user_settings_cache()
+        
+        logger.info("✅ Database ready.")
+        
+        await set_bot_commands(tg_bot)
+        
+        logger.info("Bot is ready and listening!")
         await tg_bot.delete_webhook(drop_pending_updates=True)
         await dp.start_polling(tg_bot)
     except Exception as e:
-        print(f"❌ ОШИБКА ЗАПУСКА: {e}")
+        logger.error(f"❌ CRITICAL ERROR: {e}")
+        raise e
     finally:
-        await tg_bot.session.close()
+        try:
+            await tg_bot.session.close()
+        except: pass
 
 if __name__ == "__main__":
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        print("Bot stopped!")

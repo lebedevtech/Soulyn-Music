@@ -9,7 +9,6 @@ from bot.database import Database
 # --- ГЛАВНОЕ МЕНЮ (ASYNC) ---
 async def kb_menu(uid):
     kb = InlineKeyboardBuilder()
-    # Получаем статус юзера асинхронно
     user = await Database.get_user(uid)
     
     kb.button(text=T(uid, 'btn_search_live'), switch_inline_query_current_chat="")
@@ -18,7 +17,6 @@ async def kb_menu(uid):
     
     kb.button(text=T(uid, 'btn_playlists'), callback_data="open:playlists")
     
-    # Проверка статуса
     status = user.get("status") if user else "guest"
     if status in ["user", "premium", "admin"]:
         kb.button(text=T(uid, 'btn_profile'), callback_data="my:profile")
@@ -48,7 +46,10 @@ async def kb_track(uid, vid, from_playlist=None, is_liked=False):
         if from_playlist:
             kb.button(text=T(uid, 'btn_remove_track'), callback_data=f"rmtr:{from_playlist}:{vid}")
             kb.button(text=T(uid, 'btn_move_track'), callback_data=f"movetr:ask:{vid}:{from_playlist}")
-            kb.adjust(1, 2) if from_playlist == "Favorites" else kb.adjust(2, 2)
+            if from_playlist == "Favorites":
+                kb.adjust(1, 2)
+            else:
+                kb.adjust(2, 2)
         else:
             kb.adjust(2, 1)
     else:
@@ -83,13 +84,12 @@ async def kb_playlist_view(uid, tracks, page=0, pl_name="Favorites"):
         total = math.ceil(len(tracks) / 5)
         start, end = page * 5, (page + 1) * 5
         
-        # Тут цикл, делаем запросы к БД
         for vid in tracks[start:end]:
             info = await Database.get_track(vid)
             if info:
                 title = format_title(info.get('title'), info.get('artist'))
                 if len(title) > 35: title = title[:32] + "..."
-                kb.button(text=f"🎵 {title}", callback_data=f"dl:{vid}:{pl_name}")
+                kb.button(text=f"🎵 {title}", callback_data=f"dl:{vid}")
         
         kb.adjust(1)
         row = []
@@ -120,7 +120,7 @@ async def kb_select_from_fav(uid, target_pl, page=0):
         info = await Database.get_track(vid)
         if info:
             title = format_title(info.get('title'), info.get('artist'))
-            if len(title) > 35: title = title[:37] + "..."
+            if len(title) > 35: title = title[:32] + "..."
             kb.button(text=f"➕ {title}", callback_data=f"addtr:save:{vid}:{target_pl}")
             
     kb.adjust(1)
@@ -148,8 +148,27 @@ async def kb_move_target(uid, vid, from_pl):
     kb.adjust(1)
     return kb.as_markup()
 
-# --- ЛЕГКИЕ КЛАВИАТУРЫ (SYNC - не требуют await) ---
-# Они используют T(), который теперь берет данные из RAM
+# --- ВЫБОР ПЛЕЙЛИСТА (для кнопки "Добавить в плейлист") ---
+# 🔥 FIX: Сделано async, чтобы подгружать плейлисты из БД
+async def kb_select_playlist(uid, vid):
+    user = await Database.get_user(uid)
+    kb = InlineKeyboardBuilder()
+    kb.button(text=T(uid, 'btn_fav_icon'), callback_data=f"savepl:{vid}:Favorites")
+    
+    # Показываем все плейлисты пользователя
+    if user and user.get("playlists"):
+        for pl_name in user["playlists"]:
+            if pl_name == "Favorites": continue
+            icon, clean_name = split_playlist_name(pl_name)
+            label = f"{icon} {clean_name}" if icon else f"📂 {clean_name}"
+            kb.button(text=label, callback_data=f"savepl:{vid}:{pl_name}")
+    
+    kb.button(text=T(uid, 'pl_create'), callback_data="create:playlist")
+    kb.button(text=T(uid, 'btn_close'), callback_data="close_msg")
+    kb.adjust(1)
+    return kb.as_markup()
+
+# --- ЛЕГКИЕ КЛАВИАТУРЫ (SYNC) ---
 
 def kb_top_chart(uid, tracks):
     kb = InlineKeyboardBuilder()
@@ -189,7 +208,8 @@ def kb_admin_back():
 def kb_broadcast_actions():
     kb = InlineKeyboardBuilder()
     kb.button(text="➕ Добавить кнопку", callback_data="broadcast:add_btn")
-    kb.button(text="🚀 Отправить", callback_data="broadcast:confirm")
+    # 🔥 FIX: было "broadcast:confirm", а хендлер ловил "broadcast:send"
+    kb.button(text="🚀 Отправить", callback_data="broadcast:send")
     kb.button(text="❌ Отмена", callback_data="broadcast:cancel")
     kb.adjust(1)
     return kb.as_markup()
@@ -271,14 +291,6 @@ def kb_playlist_options(uid, pl_name):
 def kb_cancel_create(uid):
     kb = InlineKeyboardBuilder()
     kb.button(text=T(uid, 'btn_cancel_search'), callback_data="open:playlists")
-    return kb.as_markup()
-
-def kb_select_playlist(uid, vid):
-    kb = InlineKeyboardBuilder()
-    kb.button(text=T(uid, 'btn_fav_icon'), callback_data=f"savepl:{vid}:Favorites")
-    kb.button(text=T(uid, 'pl_create'), callback_data="create:playlist")
-    kb.button(text=T(uid, 'btn_close'), callback_data="close_msg")
-    kb.adjust(1)
     return kb.as_markup()
 
 def kb_close(uid):

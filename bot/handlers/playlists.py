@@ -253,6 +253,7 @@ async def process_playlist_title(msg: types.Message, state: FSMContext):
     else: 
         m = await msg.answer(T(uid, 'pl_exists'), parse_mode="HTML")
         asyncio.create_task(delete_later(m))
+        # 🔥 FIX: kb_menu is async
         markup = await kb.kb_menu(uid)
         menu = await msg.answer(T(uid, 'menu'), reply_markup=markup, parse_mode="HTML")
         await Database.set_menu_id(uid, menu.message_id)
@@ -263,7 +264,9 @@ async def add_to_playlist_menu(clb: types.CallbackQuery):
     await clb.answer()
     vid = clb.data.split(":")[1]
     uid = clb.from_user.id
-    await clb.message.answer(T(uid, 'playlists'), reply_markup=kb.kb_select_playlist(uid, vid), parse_mode="HTML")
+    # 🔥 FIX: kb_select_playlist is now async
+    markup = await kb.kb_select_playlist(uid, vid)
+    await clb.message.answer(T(uid, 'playlists'), reply_markup=markup, parse_mode="HTML")
 
 @dp.callback_query(F.data.startswith("savepl:"))
 async def save_to_playlist(clb: types.CallbackQuery):

@@ -33,6 +33,7 @@ RU_TEXTS = {
     'btn_top_chart': "🔥 Топ Чарт",
     'btn_history': "📜 История",
     'btn_search_more': "🔎 Искать еще",
+    'btn_cancel_search': "❌ Отмена",
     'top_chart_title': "🔥 <b>Топ {count} популярных треков</b>\n<i>Чаще всего скачивают:</i>",
     'top_chart_empty': "📭 Чарт пока пуст.",
     'history_title': "📜 <b>Твои последние запросы:</b>",
@@ -42,6 +43,7 @@ RU_TEXTS = {
     'help_media': "🔗 <b>Поиск по ссылкам и медиа</b>\n\n🔹 <b>Ссылки:</b> Отправь ссылку (YouTube, Spotify).\n🔹 <b>Shazam:</b> Отправь кружок, видео или аудио — я найду трек.",
 
     # ПЛЕЙЛИСТЫ
+    'playlists': "📂 <b>Выбери плейлист:</b>",
     'playlists_list': "<b>📂 Твои плейлисты</b>",
     'playlist_view': "📂 <b>{}</b>",
     'playlist_empty': "📭 <b>{}</b>\nЗдесь пусто.",
@@ -56,7 +58,7 @@ RU_TEXTS = {
     'btn_delete_pl': "🗑 Удалить",
     'add_track_title': "<b>Добавить в {}</b>",
     'select_from_fav': "Выбери трек:",
-    'search_tip_pl': "Найди трек и добавь.",
+    'search_tip_pl': "Найди трек через поиск и нажми ➕ В плейлист — потом выбери <b>{}</b>.",
     'added_to_pl': "✅ Добавлено в <b>{}</b>",
     'add_to_pl': "➕ В плейлист",
     
@@ -91,6 +93,7 @@ RU_TEXTS = {
     'guest_warning': "Без статистики. Ок?",
     'btn_go_reg': "Регистрация",
     'btn_sure_guest': "Я только посмотреть",
+    'btn_guest': "Продолжить как гость",
     'del_confirm': "⚠️ Удалить аккаунт?",
     'del_success': "Удалено.",
     'btn_restore': "Восстановить",
@@ -139,6 +142,7 @@ EN_TEXTS = {
     'btn_top_chart': "🔥 Top Chart",
     'btn_history': "📜 History",
     'btn_search_more': "🔎 Search more",
+    'btn_cancel_search': "❌ Cancel",
     'top_chart_title': "🔥 <b>Top {count} Tracks</b>\n<i>Most downloaded:</i>",
     'top_chart_empty': "📭 Chart is empty.",
     'history_title': "📜 <b>Recent searches:</b>",
@@ -147,6 +151,7 @@ EN_TEXTS = {
     
     'help_media': "🔗 <b>Links & Media Search</b>\n\n🔹 <b>Links:</b> Send a link (YouTube, Spotify).\n🔹 <b>Shazam:</b> Send a voice note, video, or audio file.",
 
+    'playlists': "📂 <b>Select playlist:</b>",
     'playlists_list': "<b>📂 Your Playlists</b>",
     'playlist_view': "📂 <b>{}</b>",
     'playlist_empty': "📭 <b>{}</b>\nIt's empty here.",
@@ -161,7 +166,7 @@ EN_TEXTS = {
     'btn_delete_pl': "🗑 Delete",
     'add_track_title': "<b>Add to {}</b>",
     'select_from_fav': "Select track:",
-    'search_tip_pl': "Find a track and add it.",
+    'search_tip_pl': "Find a track via search, tap ➕ To playlist, then select <b>{}</b>.",
     'added_to_pl': "✅ Added to <b>{}</b>",
     'add_to_pl': "➕ To playlist",
     
@@ -192,6 +197,7 @@ EN_TEXTS = {
     'guest_warning': "No stats. OK?",
     'btn_go_reg': "Register",
     'btn_sure_guest': "Just looking",
+    'btn_guest': "Continue as guest",
     'del_confirm': "⚠️ Delete account?",
     'del_success': "Deleted.",
     'btn_restore': "Restore",
@@ -239,6 +245,7 @@ UA_TEXTS = {
     'btn_top_chart': "🔥 Топ Чарт",
     'btn_history': "📜 Історія",
     'btn_search_more': "🔎 Шукати ще",
+    'btn_cancel_search': "❌ Скасувати",
     'top_chart_title': "🔥 <b>Топ {count} популярних треків</b>\n<i>Найчастіше завантажують:</i>",
     'top_chart_empty': "📭 Чарт поки порожній.",
     'history_title': "📜 <b>Твої останні запити:</b>",
@@ -247,6 +254,7 @@ UA_TEXTS = {
     
     'help_media': "🔗 <b>Пошук за посиланнями та медіа</b>\n\n🔹 <b>Посилання:</b> Надішли лінк (YouTube, Spotify).\n🔹 <b>Shazam:</b> Надішли кружечок, відео або аудіо — я знайду трек.",
 
+    'playlists': "📂 <b>Обери плейлист:</b>",
     'playlists_list': "<b>📂 Твої плейлисти</b>",
     'playlist_view': "📂 <b>{}</b>",
     'playlist_empty': "📭 <b>{}</b>\nТут порожньо.",
@@ -261,7 +269,7 @@ UA_TEXTS = {
     'btn_delete_pl': "🗑 Видалити",
     'add_track_title': "<b>Додати в {}</b>",
     'select_from_fav': "Обери трек:",
-    'search_tip_pl': "Знайди трек і додай.",
+    'search_tip_pl': "Знайди трек через пошук і додай в <b>{}</b>.",
     'added_to_pl': "✅ Додано в <b>{}</b>",
     'add_to_pl': "➕ В плейлист",
     
@@ -292,6 +300,7 @@ UA_TEXTS = {
     'guest_warning': "Без статистики. Ок?",
     'btn_go_reg': "Реєстрація",
     'btn_sure_guest': "Я тільки подивитись",
+    'btn_guest': "Продовжити як гість",
     'del_confirm': "⚠️ Видалити акаунт?",
     'del_success': "Видалено.",
     'btn_restore': "Відновити",
@@ -339,6 +348,7 @@ KZ_TEXTS = {
     'btn_top_chart': "🔥 Топ Чарт",
     'btn_history': "📜 Тарих",
     'btn_search_more': "🔎 Тағы іздеу",
+    'btn_cancel_search': "❌ Болдырмау",
     'top_chart_title': "🔥 <b>Топ {count} танымал тректер</b>\n<i>Жиі жүктелетіндер:</i>",
     'top_chart_empty': "📭 Чарт әзірге бос.",
     'history_title': "📜 <b>Соңғы сұраныстар:</b>",
@@ -347,6 +357,7 @@ KZ_TEXTS = {
     
     'help_media': "🔗 <b>Сілтемелер мен медиа арқылы іздеу</b>\n\n🔹 <b>Сілтемелер:</b> Сілтемені жібер (YouTube, Spotify).\n🔹 <b>Shazam:</b> Видео немесе аудио жібер — мен табамын.",
 
+    'playlists': "📂 <b>Плейлистті таңда:</b>",
     'playlists_list': "<b>📂 Сенің плейлисттерің</b>",
     'playlist_view': "📂 <b>{}</b>",
     'playlist_empty': "📭 <b>{}</b>\nБұл жер бос.",
@@ -361,7 +372,7 @@ KZ_TEXTS = {
     'btn_delete_pl': "🗑 Өшіру",
     'add_track_title': "<b>{} ішіне қосу</b>",
     'select_from_fav': "Тректі таңда:",
-    'search_tip_pl': "Тректі тауып, қос.",
+    'search_tip_pl': "Тректі тауып, <b>{}</b> ішіне қос.",
     'added_to_pl': "✅ <b>{}</b> ішіне қосылды",
     'add_to_pl': "➕ Плейлистке",
     
@@ -392,6 +403,7 @@ KZ_TEXTS = {
     'guest_warning': "Статистикасыз. Жарай ма?",
     'btn_go_reg': "Тіркелу",
     'btn_sure_guest': "Жәй қарап көрем",
+    'btn_guest': "Қонақ ретінде жалғастыру",
     'del_confirm': "⚠️ Аккаунтты өшіру?",
     'del_success': "Өшірілді.",
     'btn_restore': "Қалпына келтіру",
@@ -439,6 +451,7 @@ UZ_TEXTS = {
     'btn_top_chart': "🔥 Top Chart",
     'btn_history': "📜 Tarix",
     'btn_search_more': "🔎 Yana qidirish",
+    'btn_cancel_search': "❌ Bekor qilish",
     'top_chart_title': "🔥 <b>Top {count} mashhur treklar</b>\n<i>Eng ko'p yuklangan:</i>",
     'top_chart_empty': "📭 Chart hozircha bo'sh.",
     'history_title': "📜 <b>So'nggi so'rovlar:</b>",
@@ -447,6 +460,7 @@ UZ_TEXTS = {
     
     'help_media': "🔗 <b>Havolalar va media orqali qidiruv</b>\n\n🔹 <b>Havolalar:</b> Havola yuboring (YouTube, Spotify).\n🔹 <b>Shazam:</b> Video yoki audio yuboring — men topaman.",
 
+    'playlists': "📂 <b>Pleylistni tanlang:</b>",
     'playlists_list': "<b>📂 Sizning pleylistlaringiz</b>",
     'playlist_view': "📂 <b>{}</b>",
     'playlist_empty': "📭 <b>{}</b>\nBu yer bo'sh.",
@@ -461,7 +475,7 @@ UZ_TEXTS = {
     'btn_delete_pl': "🗑 O'chirish",
     'add_track_title': "<b>{} ga qo'shish</b>",
     'select_from_fav': "Trekni tanlang:",
-    'search_tip_pl': "Trekni toping va qo'shing.",
+    'search_tip_pl': "Trekni toping va <b>{}</b> ga qo'shing.",
     'added_to_pl': "✅ <b>{}</b> ga qo'shildi",
     'add_to_pl': "➕ Pleylistga",
     
@@ -492,6 +506,7 @@ UZ_TEXTS = {
     'guest_warning': "Statistikasiz. Rozimisiz?",
     'btn_go_reg': "Ro'yxatdan o'tish",
     'btn_sure_guest': "Shunchaki ko'raman",
+    'btn_guest': "Mehmon sifatida davom etish",
     'del_confirm': "⚠️ Hisobni o'chirasizmi?",
     'del_success': "O'chirildi.",
     'btn_restore': "Tiklash",
@@ -539,6 +554,7 @@ AR_TEXTS = {
     'btn_top_chart': "🔥 أفضل الأغاني",
     'btn_history': "📜 السجل",
     'btn_search_more': "🔎 بحث المزيد",
+    'btn_cancel_search': "❌ إلغاء",
     'top_chart_title': "🔥 <b>أفضل {count} أغنية</b>\n<i>الأكثر تحميلاً:</i>",
     'top_chart_empty': "📭 القائمة فارغة حالياً.",
     'history_title': "📜 <b>عمليات البحث الأخيرة:</b>",
@@ -547,6 +563,7 @@ AR_TEXTS = {
     
     'help_media': "🔗 <b>البحث بالروابط والوسائط</b>\n\n🔹 <b>الروابط:</b> أرسل رابطاً (YouTube, Spotify).\n🔹 <b>Shazam:</b> أرسل رسالة صوتية أو فيديو.",
 
+    'playlists': "📂 <b>اختر قائمة التشغيل:</b>",
     'playlists_list': "<b>📂 قوائم التشغيل الخاصة بك</b>",
     'playlist_view': "📂 <b>{}</b>",
     'playlist_empty': "📭 <b>{}</b>\nفارغ هنا.",
@@ -561,7 +578,7 @@ AR_TEXTS = {
     'btn_delete_pl': "🗑 حذف",
     'add_track_title': "<b>إضافة إلى {}</b>",
     'select_from_fav': "اختر أغنية:",
-    'search_tip_pl': "ابحث عن أغنية وأضفها.",
+    'search_tip_pl': "ابحث عن أغنية وأضفها إلى <b>{}</b>.",
     'added_to_pl': "✅ تمت الإضافة إلى <b>{}</b>",
     'add_to_pl': "➕ إلى القائمة",
     
@@ -592,6 +609,7 @@ AR_TEXTS = {
     'guest_warning': "بدون إحصائيات. موافق؟",
     'btn_go_reg': "تسجيل",
     'btn_sure_guest': "مشاهدة فقط",
+    'btn_guest': "الاستمرار كضيف",
     'del_confirm': "⚠️ حذف الحساب؟",
     'del_success': "تم الحذف.",
     'btn_restore': "استعادة",
@@ -622,12 +640,12 @@ LANGUAGES = {
     'ar': AR_TEXTS
 }
 
-def T(uid, key):
-    # Берем язык из RAM кэша (быстро)
+def T(uid, key, default=None):
+    """Получить перевод. Берёт язык из RAM кэша user_settings."""
     lang_code = user_settings.get(uid, {}).get("lang", "ru")
-    
-    # Выбираем словарь
     selected_dict = LANGUAGES.get(lang_code, RU_TEXTS)
     
-    # Возвращаем перевод или ключ, если перевода нет
+    if default is not None:
+        return selected_dict.get(key, default)
+    
     return selected_dict.get(key, RU_TEXTS.get(key, f"key:{key}"))
