@@ -1,4 +1,4 @@
-aiogram
+aiogram>=3.0
 python-dotenv
 yt-dlp
 requests
@@ -9,3 +9,5 @@ aiosqlite
 httpx
 matplotlib
 shazamio
+fastapi
+uvicorn

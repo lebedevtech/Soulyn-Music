@@ -2,8 +2,7 @@ import asyncio
 import re
 import os
 import matplotlib
-# 🔥 ФИКС: Указываем бэкенд 'Agg' ПЕРЕД импортом pyplot.
-# Это позволяет генерировать картинки без монитора (на сервере).
+# 🔥 Исправление для серверов и Windows (без GUI)
 matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 
@@ -28,6 +27,7 @@ async def admin_panel(event: types.Message | types.CallbackQuery):
     user_id = event.from_user.id
     if user_id != ADMIN_ID: return
     
+    # Асинхронный вызов статистики
     users, tracks = await Database.get_stats()
     total_dl = sum(u.get("downloads_total", 0) for u in users.values())
     
@@ -43,7 +43,7 @@ async def admin_panel(event: types.Message | types.CallbackQuery):
     else:
         await event.message.edit_text(text, reply_markup=kb.kb_admin_panel(), parse_mode="HTML")
 
-# --- 1. СТАТИСТИКА (ГРАФИКИ) ---
+# --- СТАТИСТИКА (ГРАФИКИ) ---
 @dp.callback_query(F.data == "admin:stats")
 async def admin_stats(clb: types.CallbackQuery):
     await clb.answer("Генерирую график...")
@@ -58,15 +58,14 @@ async def admin_stats(clb: types.CallbackQuery):
     counts = list(data.values())
     
     plt.figure(figsize=(10, 5))
-    plt.plot(dates, counts, marker='o', linestyle='-', color='#1DB954') # Spotify Green
+    plt.plot(dates, counts, marker='o', linestyle='-', color='#1DB954')
     plt.title('Новые пользователи за 7 дней')
     plt.grid(True, linestyle='--', alpha=0.6)
     
-    # Сохраняем
     if not os.path.exists("downloads"): os.makedirs("downloads")
     chart_path = "downloads/stats_chart.png"
     plt.savefig(chart_path)
-    plt.close() # Обязательно закрываем фигуру, чтобы не забивать память
+    plt.close()
     
     await clb.message.answer_photo(
         FSInputFile(chart_path),
@@ -88,7 +87,7 @@ async def admin_top_queries(clb: types.CallbackQuery):
     
     await clb.message.edit_text(text, reply_markup=kb.kb_admin_back(), parse_mode="HTML")
 
-# --- 2. УПРАВЛЕНИЕ ЮЗЕРАМИ ---
+# --- УПРАВЛЕНИЕ ЮЗЕРАМИ ---
 @dp.callback_query(F.data == "admin:users")
 async def admin_users_start(clb: types.CallbackQuery, state: FSMContext):
     await clb.message.edit_text(
@@ -133,7 +132,6 @@ async def admin_find_user(msg: types.Message, state: FSMContext):
     )
     await state.clear()
 
-# Действия с юзером (Бан/Премиум)
 @dp.callback_query(F.data.startswith("adm:"))
 async def admin_user_action(clb: types.CallbackQuery):
     action, target_id = clb.data.split(":")[1], int(clb.data.split(":")[2])
@@ -151,7 +149,6 @@ async def admin_user_action(clb: types.CallbackQuery):
         await Database.set_user_premium(target_id, False)
         await clb.answer("⬇️ Премиум снят!")
         
-    # Обновляем карточку
     user = await Database.get_user(target_id)
     text = (
         f"👤 <b>User Info:</b>\n"
@@ -168,7 +165,7 @@ async def admin_user_action(clb: types.CallbackQuery):
     
     await clb.message.edit_text(text, reply_markup=kb.kb_admin_user_manage(target_id, is_banned, is_premium), parse_mode="HTML")
 
-# --- 3. РАССЫЛКА (BROADCAST WIZARD) ---
+# --- РАССЫЛКА ---
 @dp.callback_query(F.data == "admin:broadcast")
 async def start_broadcast(clb: types.CallbackQuery, state: FSMContext):
     await clb.message.edit_text(
@@ -228,7 +225,7 @@ async def broadcast_send(clb: types.CallbackQuery, state: FSMContext):
         try:
             await bot.copy_message(chat_id=uid, from_chat_id=chat_id, message_id=msg_id, reply_markup=markup)
             success += 1
-            await asyncio.sleep(0.05) # Анти-флуд задержка
+            await asyncio.sleep(0.05) # Анти-флуд
         except: blocked += 1
             
     await clb.message.answer(f"✅ <b>Готово!</b>\n📬: {success}\n🚫: {blocked}", parse_mode="HTML")
@@ -239,7 +236,7 @@ async def broadcast_cancel(clb: types.CallbackQuery, state: FSMContext):
     await clb.message.edit_text("❌ Отменено.")
     await state.clear()
 
-# --- ОБЫЧНЫЕ ХЕНДЛЕРЫ ---
+# --- ТИКЕТЫ ---
 @dp.callback_query(F.data == "report:error")
 async def report_error_handler(clb: types.CallbackQuery):
     uid = clb.from_user.id
@@ -251,101 +248,6 @@ async def report_error_handler(clb: types.CallbackQuery):
         await clb.message.delete()
     except: pass
 
-@dp.callback_query(F.data == "my:profile")
-async def my_profile(clb: types.CallbackQuery):
-    await clb.answer()
-    uid = clb.from_user.id
-    user = await Database.get_user(uid)
-    text = T(uid, 'profile').format(user.get('nickname', 'User'), user.get('downloads_total', 0))
-    
-    if clb.message.photo:
-        await clb.message.delete()
-        await clb.message.answer(text, reply_markup=kb.kb_profile(uid), parse_mode="HTML")
-    else:
-        try: await clb.message.edit_text(text, reply_markup=kb.kb_profile(uid), parse_mode="HTML")
-        except: pass
-
-@dp.callback_query(F.data == "settings")
-async def settings(clb: types.CallbackQuery):
-    await clb.answer()
-    if clb.message.photo:
-        await clb.message.delete()
-        await clb.message.answer(T(clb.from_user.id, 'settings'), reply_markup=kb.kb_settings(clb.from_user.id), parse_mode="HTML")
-    else:
-        try: await clb.message.edit_text(T(clb.from_user.id, 'settings'), reply_markup=kb.kb_settings(clb.from_user.id), parse_mode="HTML")
-        except: pass
-
-@dp.callback_query(F.data == "change:lang:menu") 
-async def change_lang_menu(clb: types.CallbackQuery):
-    await clb.answer()
-    uid = clb.from_user.id
-    try: await clb.message.edit_text(T(uid, 'welcome').format(""), reply_markup=kb.kb_lang(uid), parse_mode="HTML")
-    except: pass
-
-@dp.callback_query(F.data.startswith("set:lang:"))
-async def set_lang(clb: types.CallbackQuery):
-    lang = clb.data.split(":")[-1]
-    uid = clb.from_user.id
-    await Database.set_lang(uid, lang)
-    await clb.answer("Language updated!")
-    await settings(clb)
-
-# --- РЕГИСТРАЦИЯ ---
-@dp.callback_query(F.data == "auth:reg")
-async def auth_reg(clb: types.CallbackQuery, state: FSMContext):
-    await clb.answer()
-    uid = clb.from_user.id
-    await clb.message.delete()
-    msg = await clb.message.answer(T(uid, 'ask_nick'), parse_mode="HTML")
-    await state.set_state(Registration.waiting_for_nickname)
-    await state.update_data(msg_id=msg.message_id)
-
-@dp.message(Registration.waiting_for_nickname)
-async def process_nickname(msg: types.Message, state: FSMContext):
-    uid = msg.from_user.id
-    nickname = msg.text[:20]
-    await state.update_data(nickname=nickname)
-    pre_selected = []
-    await state.update_data(selected_genres=pre_selected)
-    await msg.answer(T(uid, 'ask_genres'), reply_markup=kb.kb_genres(uid, pre_selected), parse_mode="HTML")
-
-@dp.callback_query(F.data.startswith("genre:"))
-async def process_genre(clb: types.CallbackQuery, state: FSMContext):
-    action = clb.data.split(":")[1]
-    uid = clb.from_user.id
-    data = await state.get_data()
-    selected = data.get("selected_genres", [])
-    if action == "done":
-        await clb.answer()
-        nickname = data.get("nickname", "User")
-        await Database.set_profile(uid, nickname, genres=selected)
-        await clb.message.delete()
-        await clb.message.answer(T(uid, 'reg_success').format(nickname), parse_mode="HTML")
-        await state.clear()
-        await open_main_menu(uid, clb.message.chat.id)
-        return
-    if action in selected: selected.remove(action)
-    else: selected.append(action)
-    await state.update_data(selected_genres=selected)
-    try: await clb.message.edit_reply_markup(reply_markup=kb.kb_genres(uid, selected))
-    except: pass 
-    await clb.answer()
-
-@dp.callback_query(F.data == "del:acc:ask")
-async def delete_account_ask(clb: types.CallbackQuery):
-    await clb.answer()
-    await clb.message.edit_text(T(clb.from_user.id, 'del_confirm'), reply_markup=kb.kb_del_confirm(clb.from_user.id), parse_mode="HTML")
-
-@dp.callback_query(F.data == "del:acc:confirm")
-async def delete_account_confirm(clb: types.CallbackQuery):
-    await clb.answer()
-    uid = clb.from_user.id
-    await Database.soft_delete_user(uid)
-    await clb.message.delete()
-    await clb.message.answer(T(uid, 'del_success'), parse_mode="HTML")
-    await open_main_menu(uid, clb.message.chat.id)
-
-# --- ТИКЕТЫ ---
 @dp.message(Command("ticket"))
 @dp.callback_query(F.data == "open:ticket")
 async def open_ticket_start(event: types.Message | types.CallbackQuery, state: FSMContext):

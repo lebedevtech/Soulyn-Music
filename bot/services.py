@@ -3,7 +3,7 @@ import re
 import yt_dlp
 import asyncio
 import time
-import requests
+import httpx  # 🔥 Используем вместо requests
 import lyricsgenius
 from concurrent.futures import ThreadPoolExecutor
 from shazamio import Shazam
@@ -17,6 +17,14 @@ shazam = Shazam()
 ffmpeg_location = None
 if os.path.exists(os.path.join(BIN_DIR, 'ffmpeg.exe')):
     ffmpeg_location = BIN_DIR
+
+executor = ThreadPoolExecutor(max_workers=10)
+
+try:
+    genius = lyricsgenius.Genius(GENIUS_TOKEN, skip_non_songs=True, remove_section_headers=False, verbose=False)
+except: genius = None
+
+# --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 
 def get_ydl_opts():
     opts = {
@@ -45,14 +53,6 @@ def get_ydl_opts():
     if USER_AGENT: opts['user_agent'] = USER_AGENT
     return opts
 
-executor = ThreadPoolExecutor(max_workers=10)
-
-try:
-    genius = lyricsgenius.Genius(GENIUS_TOKEN, skip_non_songs=True, remove_section_headers=False, verbose=False)
-except: genius = None
-
-# --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
-
 async def get_lyrics(artist, title):
     if not genius: return None
     clean_t = title.lower().replace(artist.lower(), "").strip()
@@ -66,13 +66,16 @@ async def get_lyrics(artist, title):
         return song.lyrics if song else None
     except: return None
 
-# Синхронная версия для использования внутри потоков yt-dlp
+# Синхронная версия поиска (теперь на httpx) для использования внутри потоков
 def sync_search_itunes(query, limit=1):
     try:
         url = "https://itunes.apple.com/search"
         params = {"term": query, "media": "music", "entity": "song", "limit": limit}
-        resp = requests.get(url, params=params, timeout=5)
-        data = resp.json()
+        # 🔥 Используем httpx синхронно вместо requests
+        with httpx.Client(timeout=5) as client:
+            resp = client.get(url, params=params)
+            data = resp.json()
+            
         if data.get("resultCount", 0) > 0:
             track = data["results"][0]
             return {
@@ -92,15 +95,20 @@ def sync_search_itunes(query, limit=1):
 
 async def search_yt(query: str):
     query = query.strip()
-    if "open.spotify.com" in query:
+    
+    # 1. Spotify Link
+    if "open.spotify.com" in query or "spotify.com" in query:
         track_name = await resolve_spotify_link(query)
         if track_name: query = track_name
         else: return [] 
+        
+    # 2. YouTube Link
     if "youtube.com" in query or "youtu.be" in query:
         return await _resolve_youtube_link(query)
 
-    # 🔥 ИСПРАВЛЕНИЕ: Вызываем async метод напрямую, без executor
+    # 3. Text Search (MusicSearcher из utils.py)
     try:
+        # MusicSearcher уже асинхронный и на httpx
         music_results = await MusicSearcher.search_integrated(query)
         if music_results:
             clean_results = []
@@ -115,7 +123,7 @@ async def search_yt(query: str):
     except Exception as e:
         logger.error(f"Search Error: {e}")
     
-    # Если там нет - ищем на YouTube
+    # 4. Fallback (YT-DLP Search)
     return await _fallback_search(query)
 
 async def recognize_media(file_path):
@@ -132,8 +140,11 @@ async def recognize_media(file_path):
 async def resolve_spotify_link(url):
     def parse_page():
         try:
+            # Используем httpx для парсинга
             headers = {'User-Agent': 'Mozilla/5.0'}
-            response = requests.get(url, headers=headers, timeout=10)
+            with httpx.Client(timeout=10, headers=headers) as client:
+                response = client.get(url)
+            
             if response.status_code == 200:
                 from bs4 import BeautifulSoup
                 soup = BeautifulSoup(response.content, 'html.parser')
@@ -201,6 +212,7 @@ async def resolve_meta_to_youtube(artist, title):
 
 async def download_yt(vid, meta_pkg=None):
     real_vid = vid
+    # Если пришел ID из iTunes (формат "source:id"), резолвим его в YouTube ID
     if meta_pkg and ":" in str(vid):
         real_vid = await resolve_meta_to_youtube(meta_pkg['artist'], meta_pkg['title'])
         if not real_vid: return None
@@ -223,6 +235,7 @@ async def download_yt(vid, meta_pkg=None):
                 info = ydl.extract_info(url, download=True)
                 current_filename = ydl.prepare_filename(info)
         except:
+            # Retry logic
             time.sleep(1.5)
             try:
                 dl_opts['outtmpl'] = 'downloads/%(id)s_retry.%(ext)s'
@@ -236,7 +249,7 @@ async def download_yt(vid, meta_pkg=None):
         base_name = current_filename.rsplit('.', 1)[0]
         final_filename = base_name + '.mp3'
         
-        # --- ФОРМИРОВАНИЕ МЕТАДАННЫХ ---
+        # --- ФОРМИРОВАНИЕ МЕТАДАННЫХ (SMART ENRICHMENT) ---
         
         final_meta = {}
         final_title = "Unknown"
@@ -247,6 +260,7 @@ async def download_yt(vid, meta_pkg=None):
             final_artist = meta_pkg['artist']
             final_meta = meta_pkg['meta']
         else:
+            # Если метаданных не было (просто ссылка на YouTube), пытаемся найти их сами
             raw_title = info.get('title', '')
             uploader = info.get('uploader', '')
             
@@ -258,7 +272,7 @@ async def download_yt(vid, meta_pkg=None):
                 if " - " in full_clean: yt_artist, yt_title = full_clean.split(" - ", 1)
                 else: yt_artist = uploader; yt_title = full_clean
             
-            # 🔥 ИСПРАВЛЕНИЕ: Используем синхронный поиск внутри потока
+            # Ищем красивые теги в iTunes
             enriched = None
             try:
                 search_q = f"{yt_artist} {yt_title}"
@@ -279,14 +293,16 @@ async def download_yt(vid, meta_pkg=None):
                     'cover': None 
                 }
 
+        # Скачивание обложки высокого качества
         thumb_path = None
         if final_meta.get('cover'):
             try:
                 temp_thumb = f"downloads/{info['id']}_cover.jpg"
-                resp = requests.get(final_meta['cover'], timeout=5)
-                if resp.status_code == 200:
-                    with open(temp_thumb, 'wb') as f: f.write(resp.content)
-                    thumb_path = temp_thumb
+                with httpx.Client(timeout=5) as client:
+                    resp = client.get(final_meta['cover'])
+                    if resp.status_code == 200:
+                        with open(temp_thumb, 'wb') as f: f.write(resp.content)
+                        thumb_path = temp_thumb
             except: pass
 
         if not thumb_path:
