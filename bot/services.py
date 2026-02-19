@@ -3,7 +3,7 @@ import re
 import yt_dlp
 import asyncio
 import time
-import httpx  # 🔥 Используем вместо requests
+import httpx
 import lyricsgenius
 from concurrent.futures import ThreadPoolExecutor
 from shazamio import Shazam
@@ -16,6 +16,8 @@ shazam = Shazam()
 
 ffmpeg_location = None
 if os.path.exists(os.path.join(BIN_DIR, 'ffmpeg.exe')):
+    ffmpeg_location = BIN_DIR
+elif os.path.exists(os.path.join(BIN_DIR, 'ffmpeg')):
     ffmpeg_location = BIN_DIR
 
 executor = ThreadPoolExecutor(max_workers=10)
@@ -66,12 +68,10 @@ async def get_lyrics(artist, title):
         return song.lyrics if song else None
     except: return None
 
-# Синхронная версия поиска (теперь на httpx) для использования внутри потоков
 def sync_search_itunes(query, limit=1):
     try:
         url = "https://itunes.apple.com/search"
         params = {"term": query, "media": "music", "entity": "song", "limit": limit}
-        # 🔥 Используем httpx синхронно вместо requests
         with httpx.Client(timeout=5) as client:
             resp = client.get(url, params=params)
             data = resp.json()
@@ -91,6 +91,32 @@ def sync_search_itunes(query, limit=1):
     except: pass
     return None
 
+# --- 🔥 ФУНКЦИЯ ДЛЯ API (stream endpoint) ---
+async def get_audio_url(video_id):
+    """Получает прямую URL аудиопотока для YouTube видео. Используется в api.py."""
+    def _extract():
+        opts = get_ydl_opts()
+        opts['skip_download'] = True
+        opts['format'] = 'bestaudio/best'
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+                if info:
+                    # Ищем лучший аудио формат
+                    formats = info.get('formats', [])
+                    audio_formats = [f for f in formats if f.get('acodec') != 'none' and f.get('vcodec') in ('none', None)]
+                    if audio_formats:
+                        best = max(audio_formats, key=lambda f: f.get('abr', 0) or 0)
+                        return best.get('url')
+                    # Fallback: берём url из info напрямую
+                    return info.get('url')
+        except Exception as e:
+            logger.error(f"get_audio_url error: {e}")
+        return None
+    
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(executor, _extract)
+
 # --- ПОИСК ---
 
 async def search_yt(query: str):
@@ -108,7 +134,6 @@ async def search_yt(query: str):
 
     # 3. Text Search (MusicSearcher из utils.py)
     try:
-        # MusicSearcher уже асинхронный и на httpx
         music_results = await MusicSearcher.search_integrated(query)
         if music_results:
             clean_results = []
@@ -140,7 +165,6 @@ async def recognize_media(file_path):
 async def resolve_spotify_link(url):
     def parse_page():
         try:
-            # Используем httpx для парсинга
             headers = {'User-Agent': 'Mozilla/5.0'}
             with httpx.Client(timeout=10, headers=headers) as client:
                 response = client.get(url)
@@ -206,13 +230,12 @@ async def resolve_meta_to_youtube(artist, title):
     loop = asyncio.get_event_loop()
     try:
         data = await loop.run_in_executor(executor, run_resolve)
-        if data and data['entries']: return data['entries'][0]['id']
+        if data and data.get('entries'): return data['entries'][0]['id']
     except: pass
     return None
 
 async def download_yt(vid, meta_pkg=None):
     real_vid = vid
-    # Если пришел ID из iTunes (формат "source:id"), резолвим его в YouTube ID
     if meta_pkg and ":" in str(vid):
         real_vid = await resolve_meta_to_youtube(meta_pkg['artist'], meta_pkg['title'])
         if not real_vid: return None
@@ -235,7 +258,6 @@ async def download_yt(vid, meta_pkg=None):
                 info = ydl.extract_info(url, download=True)
                 current_filename = ydl.prepare_filename(info)
         except:
-            # Retry logic
             time.sleep(1.5)
             try:
                 dl_opts['outtmpl'] = 'downloads/%(id)s_retry.%(ext)s'
@@ -249,8 +271,6 @@ async def download_yt(vid, meta_pkg=None):
         base_name = current_filename.rsplit('.', 1)[0]
         final_filename = base_name + '.mp3'
         
-        # --- ФОРМИРОВАНИЕ МЕТАДАННЫХ (SMART ENRICHMENT) ---
-        
         final_meta = {}
         final_title = "Unknown"
         final_artist = "Unknown"
@@ -258,9 +278,8 @@ async def download_yt(vid, meta_pkg=None):
         if meta_pkg:
             final_title = meta_pkg['title']
             final_artist = meta_pkg['artist']
-            final_meta = meta_pkg['meta']
+            final_meta = meta_pkg.get('meta', {})
         else:
-            # Если метаданных не было (просто ссылка на YouTube), пытаемся найти их сами
             raw_title = info.get('title', '')
             uploader = info.get('uploader', '')
             
@@ -272,7 +291,6 @@ async def download_yt(vid, meta_pkg=None):
                 if " - " in full_clean: yt_artist, yt_title = full_clean.split(" - ", 1)
                 else: yt_artist = uploader; yt_title = full_clean
             
-            # Ищем красивые теги в iTunes
             enriched = None
             try:
                 search_q = f"{yt_artist} {yt_title}"
@@ -293,7 +311,6 @@ async def download_yt(vid, meta_pkg=None):
                     'cover': None 
                 }
 
-        # Скачивание обложки высокого качества
         thumb_path = None
         if final_meta.get('cover'):
             try:

@@ -4,7 +4,6 @@ import sys
 import os
 import warnings
 
-# Убираем лишние ворнинги на Windows
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from aiogram.types import BotCommand, BotCommandScopeDefault, BotCommandScopeChat
@@ -34,7 +33,6 @@ async def set_bot_commands(bot):
 
     admin_commands = user_commands + [
         BotCommand(command="admin", description="👑 Админ-панель"),
-        BotCommand(command="broadcast", description="📢 Рассылка"),
     ]
     try:
         await bot.set_my_commands(admin_commands, scope=BotCommandScopeChat(chat_id=ADMIN_ID))
@@ -46,9 +44,14 @@ async def main():
         from bot.loader import bot as tg_bot, dp
         import bot.handlers  
         
-        logger.info("Checking database consistency...")
+        logger.info("Initializing database...")
         await Database.init_db()
-        logger.info("✅ Database clean.")
+        
+        # 🔥 FIX: Загружаем user_settings в RAM кэш
+        logger.info("Loading user settings into RAM cache...")
+        await Database.load_user_settings_cache()
+        
+        logger.info("✅ Database ready.")
         
         await set_bot_commands(tg_bot)
         
@@ -65,7 +68,6 @@ async def main():
 
 if __name__ == "__main__":
     if sys.platform == 'win32':
-        # Важно для Windows
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     try:
         asyncio.run(main())

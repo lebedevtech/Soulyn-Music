@@ -4,7 +4,7 @@ import time
 import datetime
 import asyncio
 from bot.config import SQLITE_DB_FILE
-from bot.loader import logger
+from bot.loader import logger, user_settings
 
 class Database:
     @classmethod
@@ -45,6 +45,20 @@ class Database:
             await db.commit()
             print("✅ Database initialized (Async Mode)")
 
+    # --- ЗАГРУЗКА КЭША user_settings В RAM ---
+    @classmethod
+    async def load_user_settings_cache(cls):
+        """Загружает lang и status всех юзеров в RAM при старте бота."""
+        async with aiosqlite.connect(SQLITE_DB_FILE) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT id, lang, status FROM users") as cursor:
+                async for row in cursor:
+                    user_settings[row['id']] = {
+                        'lang': row['lang'] or 'ru',
+                        'status': row['status'] or 'guest'
+                    }
+        print(f"✅ Loaded {len(user_settings)} users into RAM cache")
+
     # --- ПОЛЬЗОВАТЕЛИ ---
     @classmethod
     async def get_user(cls, user_id):
@@ -69,14 +83,17 @@ class Database:
     async def register_user(cls, user_id, username, first_name, referrer_id=None):
         today = str(datetime.date.today())
         async with aiosqlite.connect(SQLITE_DB_FILE) as db:
-            async with db.execute("SELECT id FROM users WHERE id=?", (user_id,)) as cursor:
-                if await cursor.fetchone():
+            async with db.execute("SELECT id, lang FROM users WHERE id=?", (user_id,)) as cursor:
+                existing = await cursor.fetchone()
+                if existing:
                     await db.execute("UPDATE users SET username=?, full_name=?, last_active=? WHERE id=?", (username, first_name, today, user_id))
                 else:
                     await db.execute('''INSERT INTO users (id, username, full_name, referrer_id, join_date, last_active, lang, status) 
                                  VALUES (?, ?, ?, ?, ?, ?, 'ru', 'guest')''', (user_id, username, first_name, referrer_id, today, today))
                     # Создаем дефолтный плейлист Избранное
                     await db.execute("INSERT OR IGNORE INTO playlists (user_id, name) VALUES (?, 'Favorites')", (user_id,))
+                    # Обновляем RAM кэш
+                    user_settings[user_id] = {'lang': 'ru', 'status': 'guest'}
             await db.commit()
 
     @classmethod
@@ -84,6 +101,10 @@ class Database:
         async with aiosqlite.connect(SQLITE_DB_FILE) as db:
             await db.execute("UPDATE users SET lang=? WHERE id=?", (lang_code, user_id))
             await db.commit()
+        # 🔥 Обновляем RAM кэш
+        if user_id not in user_settings:
+            user_settings[user_id] = {}
+        user_settings[user_id]['lang'] = lang_code
 
     @classmethod
     async def set_menu_id(cls, user_id, msg_id):
@@ -116,7 +137,6 @@ class Database:
     async def cache_track(cls, vid, file_id, title, artist, meta=None, lyrics=None):
         meta_json = json.dumps(meta) if meta else '{}'
         async with aiosqlite.connect(SQLITE_DB_FILE) as db:
-            # Upsert (Вставка или обновление)
             await db.execute('''INSERT INTO tracks 
                 (id, file_id, title, artist, meta, lyrics, cached_at, popularity) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, 1)
@@ -124,6 +144,13 @@ class Database:
                 file_id=excluded.file_id,
                 popularity=tracks.popularity + 1
                 ''', (vid, file_id, title, artist, meta_json, lyrics, time.time()))
+            await db.commit()
+
+    @classmethod
+    async def increment_track_popularity(cls, vid):
+        """Увеличивает счётчик популярности трека на 1."""
+        async with aiosqlite.connect(SQLITE_DB_FILE) as db:
+            await db.execute("UPDATE tracks SET popularity = popularity + 1 WHERE id=?", (vid,))
             await db.commit()
 
     @classmethod
@@ -197,7 +224,6 @@ class Database:
         async with aiosqlite.connect(SQLITE_DB_FILE) as db:
             async with db.execute("SELECT query FROM search_history WHERE user_id=? ORDER BY id DESC LIMIT ?", (user_id, limit)) as cursor:
                 raw = [r[0] for r in await cursor.fetchall()]
-                # Убираем дубликаты сохраняя порядок
                 return list(dict.fromkeys(raw))
     
     @classmethod
@@ -219,6 +245,9 @@ class Database:
         async with aiosqlite.connect(SQLITE_DB_FILE) as db:
             await db.execute("UPDATE users SET status=? WHERE id=?", (status, user_id))
             await db.commit()
+        # 🔥 Обновляем RAM кэш
+        if user_id in user_settings:
+            user_settings[user_id]['status'] = status
             
     @classmethod
     async def set_profile(cls, user_id, nickname, genres=None):
@@ -226,12 +255,17 @@ class Database:
         async with aiosqlite.connect(SQLITE_DB_FILE) as db:
             await db.execute("UPDATE users SET status='user', nickname=?, fav_genres=? WHERE id=?", (nickname, g, user_id))
             await db.commit()
+        # 🔥 Обновляем RAM кэш
+        if user_id in user_settings:
+            user_settings[user_id]['status'] = 'user'
             
     @classmethod
     async def soft_delete_user(cls, user_id):
         async with aiosqlite.connect(SQLITE_DB_FILE) as db:
             await db.execute("UPDATE users SET status='guest' WHERE id=?", (user_id,))
             await db.commit()
+        if user_id in user_settings:
+            user_settings[user_id]['status'] = 'guest'
             
     @classmethod
     async def save_lyrics(cls, vid, text):
@@ -248,7 +282,6 @@ class Database:
                 if not row: return True
                 
                 today = str(datetime.date.today())
-                # Если наступил новый день - сбрасываем счетчик
                 if row['last_active'] != today:
                     await db.execute("UPDATE users SET last_active=?, downloads_today=0 WHERE id=?", (today, user_id))
                     await db.commit()

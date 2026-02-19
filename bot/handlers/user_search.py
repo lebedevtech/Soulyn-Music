@@ -37,10 +37,7 @@ async def start_deep_link(msg: types.Message, command: CommandObject, state: FSM
         await _process_download(uid, msg.chat.id, real_vid, status_msg)
         return
 
-    await start_normal(msg, state)
-
-@dp.message(Command("start"))
-async def start_handler_wrapper(msg: types.Message, state: FSMContext):
+    # Если deep link не dl_, обычный старт
     await start_normal(msg, state)
 
 @dp.message(F.text.startswith("🆔"), F.chat.type == "private")
@@ -71,6 +68,7 @@ async def text_search(msg: types.Message, state: FSMContext):
         else:
             await status_msg.edit_text(T(uid, '404'), parse_mode="HTML")
         return
+    # Если не ссылка — ничего не делаем (поиск через inline)
     return
 
 @dp.inline_query()
@@ -229,7 +227,7 @@ async def _process_download(uid, chat_id, raw_vid, message_to_edit=None):
     bot_info = await bot.get_me()
     caption = f"<a href='https://t.me/{bot_info.username}'>🎧 via {BOT_NAME_TEXT}</a>"
 
-    if cached:
+    if cached and cached.get('file_id') and cached['file_id'] != 'FILE_ID_UNKNOWN':
         await Database.update_stats(uid, genre=cached.get('genre'))
         await Database.increment_track_popularity(db_lookup_id)
         if cached.get('title') and cached.get('artist'):
@@ -343,8 +341,8 @@ async def lyrics(clb: types.CallbackQuery):
             
             import html
             safe_text = html.escape(text)
-            safe_artist = html.escape(info['artist'])
-            safe_title = html.escape(info['title'])
+            safe_artist = html.escape(info['artist'] or 'Unknown')
+            safe_title = html.escape(info['title'] or 'Unknown')
             
             header = f"🎤 <b>{safe_artist} - {safe_title}</b>\n\n"
             full_message = header + safe_text
@@ -355,12 +353,7 @@ async def lyrics(clb: types.CallbackQuery):
             try: await status_msg.edit_text("😔 <b>Текст этой песни не найден.</b>", parse_mode="HTML")
             except: pass
             
-    except:
+    except Exception as e:
+        logger.error(f"Lyrics error: {e}")
         try: await clb.message.answer("❌ Ошибка при поиске текста.")
         except: pass
-
-@dp.callback_query(F.data == "delete:message")
-async def delete_message(clb: types.CallbackQuery):
-    await clb.answer()
-    try: await clb.message.delete()
-    except: pass
